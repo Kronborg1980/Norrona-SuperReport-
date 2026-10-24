@@ -16,7 +16,7 @@
 <div id="mainNote"></div>
 <div class="tabs">
 <section id="tab-over" class="active"><div id="hero"></div><div class="grid g4" id="kpis"></div><div class="grid g2" style="margin-top:13px"><div class="card"><h2>Omsætning pr. passager – måned for måned</h2><p class="sub small">Kun måneder med både passagermix og regnskab.</p><div id="spendChart"></div></div><div class="card"><h2>Passagermix · vigtigste nationaliteter</h2><p class="sub small">Antal og andel af alle passagerregistreringer (valgt status).</p><div id="mixBars"></div></div></div></section>
-<section id="tab-pax"><div class="grid g4" id="paxStats"></div><div class="grid g2" style="margin-top:13px"><div class="card"><div class="row" style="align-items:start;margin-bottom:9px"><h2>Nationaliteter A vs. B</h2><div class="compare-legend" id="paxLegend" aria-label="Farver for sammenligningsår"></div></div><div id="paxBars"></div></div><div class="card"><h2>Andel af passagermixet</h2><div id="shareChart"></div></div></div><div class="card" style="margin-top:13px"><div class="row"><h2>Detaljeret nationalitetssammenligning</h2><button id="csvBtn">Eksportér CSV</button></div><div id="mixTable" style="margin-top:13px"></div></div></section>
+<section id="tab-pax"><div class="grid g4" id="paxStats"></div><div class="grid g2" style="margin-top:13px"><div class="card"><div class="row" style="align-items:start;margin-bottom:9px"><h2>Nationaliteter A vs. B</h2><div class="compare-legend" id="paxLegend" aria-label="Farver for sammenligningsår"></div></div><div id="paxBars"></div></div><div class="card"><h2>Andel af passagermixet</h2><div id="shareChart"></div></div></div><div class="card" style="margin-top:13px"><div class="row"><h2>Detaljeret nationalitetssammenligning</h2><button id="csvBtn">Eksportér CSV</button></div><div id="mixTable" style="margin-top:13px"></div></div><div class="card" style="margin-top:13px"><div class="row"><div><h2>Omsætning pr. nationalitet · hurtigoversigt</h2><p class="sub small">Faktisk DKK/pax fra JetReports; landenes DKK/pax og salgsandel er modelberegnede. Alle forbrugsindeks kan ændres under Pax &amp; Salg.</p></div><button id="paxOpenSales" class="primary">Åbn Pax &amp; Salg</button></div><div id="paxSalesSummary" style="margin-top:13px"></div></div></section>
 <section id="tab-sales">
 <div class="hero"><div class="eyebrow">Pax × Retail Intelligence</div><h2>Hvem fylder skibet – og hvordan fordeler vi salget?</h2><div class="sub">Faktisk omsætning og DKK/pax fra JetReports. Nationalitetsfordelingen er modelberegnet efter dine justerbare forbrugsindeks.</div></div>
 <div class="grid g4" id="salesKPIs"></div>
@@ -503,6 +503,7 @@ function renderSales(m){
  stat('Fordelt på nationaliteter',d.valid?money(d.modeledTotal)+' '+unit:'—',d.valid?'Modelsum afstemt til faktiske salgstal':'Mangler data')+
  stat('Passagerregistreringer',d.valid?fmt(d.registrations):'—',d.valid?d.rows.length+' lande · '+d.monthly.length+' matched måneder':'Mangler data');
  if(!d.valid){
+  $('paxSalesSummary').innerHTML='<div class="empty">Indlæs JetReport for den valgte afdeling for at fordele omsætningen på nationaliteter.</div>';
   for(const id of ['salesTable','salesShareBars','salesMonthlyChart','salesMonths','salesShiftResult','salesShiftNote','salesRefCompare'])$(id).innerHTML='<div class="empty">Vælg én indlæst afdeling og måneder med både JetReports og passagerfil.</div>';
   $('salesBalance').textContent='';$('salesShiftBase').textContent='';return d;
  }
@@ -512,6 +513,7 @@ function renderSales(m){
   sort==='lift'?b.salesMinusPax-a.salesMinusPax:sort==='country'?a.country.localeCompare(b.country):b.modelRevenue-a.modelRevenue);
  const available=[...sorted].sort((a,b)=>b.count-a.count);
  select('salesShiftCountry',available.map(x=>[x.country,showCountry(x.country)]),$('salesShiftCountry').value||available.find(x=>x.country==='DE')?.country||available[0]?.country||'');
+ $('paxSalesSummary').innerHTML='<div class="quality" style="margin-bottom:9px">Faktisk omsætning pr. pax: <strong>'+fmt(d.spend,1)+' DKK</strong> · Faktisk omsætning: '+money(d.revenue)+' '+unit+' · '+d.monthly.length+' matched måneder</div>'+matrix(['Nationalitet','Paxandel','Modelleret salgsandel','Modelleret DKK/pax','Modelomsætning DKK'],[...d.rows].sort((a,b)=>b.count-a.count).slice(0,12).map(x=>[escape(showCountry(x.country)),fmt(x.paxShare*100,1)+'%',fmt(x.saleShare*100,1)+'%',fmt(x.modeledPerPax,1),money(x.modelRevenue)]));
  const tableRows=sorted.map(x=>[
   escape(showCountry(x.country)),fmt(x.count),fmt(100*x.paxShare,1)+'%',
   x.refShare==null?'—':fmt(x.refShare*100,1)+'%',
@@ -713,6 +715,7 @@ $('nav').addEventListener('click',e=>{let b=e.target.closest('[data-tab]');if(!b
 $('csvBtn').onclick=()=>csvDownload(exportRows,'norrona_passagermix.csv');
 $('deepCSV').onclick=()=>csvDownload(window.deepExport||[],'norrona_mix_dybde.csv');
 $('salesCSV').onclick=()=>csvDownload(window.salesExport||[],'norrona_nationalitet_omsætning.csv');
+$('paxOpenSales').onclick=()=>{currentTab='sales';for(const v of $('nav').querySelectorAll('button'))v.classList.toggle('on',v.dataset.tab==='sales');for(const sec of document.querySelectorAll('.tabs>section'))sec.classList.toggle('active',sec.id==='tab-sales')};
 $('salesSort').addEventListener('change',()=>renderSales(lastModel));
 $('salesShiftCountry').addEventListener('change',()=>renderSales(lastModel));
 $('salesShiftSlider').addEventListener('input',e=>{$('salesShiftNumber').value=e.target.value;renderSales(lastModel)});
