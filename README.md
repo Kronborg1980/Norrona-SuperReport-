@@ -35,3 +35,16 @@ Filer kan indlæses i vilkårlig rækkefølge. Et nyt udtræk for samme passager
 ## Drift
 
 En enkelt statisk HTML-fil. Excel-filerne indlæses af SheetJS i browseren. PowerPoint genereres af PptxGenJS, der indlæses, når brugeren vælger eksport. Bibliotekerne hentes fra CDN, så internetforbindelse er nødvendig første gang.
+
+
+## Passagermix-dybde (version 2)
+
+- **All pax som standard:** Alle nationaliteter og alle bookingstatusser/registreringer vises ved start. Bookingstatus-filteret kan skiftes til uden no-show eller kun no-show.
+- **Mix-dybde:** Opdel antal og andel efter land, nationalitetsgruppe, rute, passagerkategori, alder, bookingstatus eller rækketype. Ekstra filtre for land, rute, kategori og alder.
+- **År-mod-år:** Se forskel i antal, procent og procentpoint for de samme måneder.
+- **Krydstabeller:** Nationalitet × rute og nationalitet × passagerkategori, plus stigninger, fald og månedlig andelsudvikling.
+- **Sammenhæng:** Landekoders andel over for omsætning pr. JetReports-passager i den valgte afdeling. Pearson r beregnes kun ved mindst seks sammenhørende måneder med tilstrækkelig variation. Samme kalendermåned år-mod-år vises særskilt.
+- **Dybere rapport og PowerPoint:** Nationalitetsforskydninger, ruter, kategorier, alder og no-shows. Ni slides i den eksisterende Smyril Line-inspirerede stil.
+- **Passagerfiler alene:** Fælles måneder og passagermix kan analyseres uden indlæste JetReports. Omsætning kræver de tilsvarende regnskaber.
+
+**Definition:** “All pax” betyder alle registreringer i passagereksporten, inklusive NSH. Det er ikke nødvendigvis identisk med JetReports' officielle rejsetal. SuperReport viser afvigelsen under Datakontrol og anvender JetReports-pax som nævner for omsætning pr. passager.
