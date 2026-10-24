@@ -101,7 +101,17 @@ total+=n;countries.set(country,(countries.get(country)||0)+n);byNation.set(group
 return {total,countries,byNation,nsh,coverage:obj}}
 function financeMonths(y,scope){return Array.from({length:12},(_,i)=>i+1).filter(mm=>!!salesMonth(+y,mm,scope))}
 function relevantMonths(y,scope){const p=availableMonths(y);return p.length?p:financeMonths(y,scope)}
-function resolveMonths(yA,yB,choice,scope){if(choice>=1&&choice<=12)return [choice];if(choice===13){const a=relevantMonths(yA,scope);const b=relevantMonths(yB,scope);return yB?a.filter(m=>b.includes(m)):a}return relevantMonths(yA,scope)}
+function resolveMonths(yA,yB,choice,scope){
+ if(choice>=1&&choice<=12)return [choice];
+ const available=relevantMonths(yA,scope),sameYearB=yB?relevantMonths(yB,scope):available;
+ if(choice===13){
+  const shared=yB?available.filter(mm=>sameYearB.includes(mm)):available;
+  const withFinance=shared.filter(mm=>!!salesMonth(yA,mm,scope));
+  return withFinance.length?withFinance:shared;
+ }
+ const withFinance=available.filter(mm=>!!salesMonth(yA,mm,scope));
+ return withFinance.length?withFinance:available;
+}
 function aggregate(y,monthsList,scope,status,nation){let known=0,totP=0,allP=0,groups=new Map(),rev=0,budget=0,gp=0,result=0,hasFinance=0,jetPax=0,pairedRev=0,pairedPax=0,pairedMonths=[],financeMonths=[],calendar=[];
 for(const m of monthsList){const p=summaryPax(y,m,status,nation),s=salesMonth(y,m,scope);if(p){known++;allP+=p.total;for(const [k,v] of p.countries)groups.set(k,(groups.get(k)||0)+v);totP+=p.total}
 if(s){hasFinance++;financeMonths.push(m);rev+=s.income;budget+=s.budget;gp+=s.gp;result+=s.result;jetPax+=s.pax||0;if(p&&s.pax>0){pairedRev+=s.income;pairedPax+=s.pax;pairedMonths.push(m)}}
@@ -117,11 +127,11 @@ function warningNotes(model){const m=model,A=m.A,B=m.B,notes=[];
 if(!paxFiles.size&&!jetFiles.size)return '';
 if(!paxFiles.size)notes.push('Indlæs passagereksporter for at beregne nationalitetsandele.');
 if(!jetFiles.size)notes.push('Indlæs JetReports for at beregne omsætning og resultater.');if(m.dept==='ALL'&&jetFiles.size&&m.ma.some(mm=>Object.keys(DEPTS).some(d=>!jetFiles.get(m.ya+'|'+d)?.months.has(mm))))notes.push('Skibstotalen kræver alle fem afdelinger for hver måned. Vælg en enkelt afdeling for at analysere de filer, der allerede er indlæst.');
-if(m.mo===13&&!m.ma.length)notes.push('Der er endnu ingen fælles måneder med både JetReports og passagerdata i de to år.');
+if(m.mo===13&&!m.ma.length)notes.push('Der findes endnu ingen fælles passagermåneder i de valgte år.');
 if(m.mo===0&&m.ma.join()!==m.mb.join())notes.push('Årene dækker forskellige måneder. Sammenligningsændringer vises kun, når perioderne er ens.');
 if(m.ma.length&&m.A.hasFinance<m.ma.length&&m.A.hasFinance)notes.push('Regnskabet dækker '+m.A.hasFinance+' af '+m.ma.length+' valgte måneder. Omsætning og omsætning pr. pax vises for de tilgængelige måneder.');
 if(m.ya&&paxFiles.get(m.ya)&&m.A.known<m.ma.length)notes.push('Der mangler passagerdata for dele af år A.');
-if(m.yb&&m.B.hasFinance<m.mb.length&&m.B.known>0)notes.push('År B har endnu ikke fuldt matchende JetReports. Nationalitetsmix kan stadig sammenlignes.');
+if(m.yb&&m.B.hasFinance<m.mb.length&&m.B.known>0&&m.B.hasFinance>0)notes.push('År B har regnskab for færre måneder end A. Nationalitetsmix og scenarieberegninger kan stadig sammenlignes.');
 const n=notes.length?'<div class="notice warning">'+notes.map(escape).join(' ')+'</div>':'';
 return n}
 function stat(title,val,foot){return '<div class="card stat"><div class="title">'+escape(title)+'</div><div class="val num">'+val+'</div><div class="foot">'+foot+'</div></div>'}
