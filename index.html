@@ -31,13 +31,13 @@
  <div class="card"><h2>DKK pr. pax · udvalgte nationaliteter</h2><p class="sub small">Månedlig model – samme officielle JetReports-pax som nævner.</p><div id="salesMonthlyChart"></div></div>
 </div>
 <div class="card" style="margin-top:13px">
- <div class="row" style="align-items:start"><div><h2>Ændr passagermixet – se konsekvensen for salget</h2><p class="sub small">Vælg land og flyt landets andel op/ned i procentpoint. De øvrige landes andele tilpasses automatisk, og det samlede paxantal holdes fast.</p></div><button id="salesShiftReset">Nulstil ændring</button></div>
+ <div class="row" style="align-items:start"><div><h2>Ændr passagermixet – se konsekvensen for salget</h2><p class="sub small">Vælg land og flyt landets andel i procentpoint. De øvrige landes andele tilpasses automatisk. Paxantal og den faktiske månedlige omsætning holdes som udgangspunkt fast.</p></div><div class="row"><button id="salesExampleDE" class="gold">Eksempel: Tyskere 120 +10 pp</button><button id="salesExampleFO">Eksempel: Færinger 120 +10 pp</button><button id="salesResetAll">Alle indeks 100</button><button id="salesShiftReset">Nulstil paxændring</button></div></div>
  <div class="grid g3" style="margin-top:12px">
   <div><label class="label">Nationalitet</label><select id="salesShiftCountry" style="width:100%"></select><div class="sub small" style="margin-top:7px" id="salesShiftBase"></div></div>
   <div><label class="label">Ændring i nationalitetsandel (procentpoint)</label><div class="row"><input id="salesShiftSlider" type="range" min="-30" max="30" step="1" value="0" style="flex:1;accent-color:#e0a020"><input id="salesShiftNumber" type="number" min="-30" max="30" step="1" value="0" style="width:78px;background:#091f2d;border:1px solid #44687a;color:#fff;border-radius:8px;padding:8px"></div></div>
   <div id="salesShiftResult" class="scenario-result"></div>
  </div>
- <div class="notice" id="salesShiftNote" style="margin-top:13px"></div>
+ <div class="notice" id="salesShiftNote" style="margin-top:13px"></div><div id="salesRefCompare" class="quality" style="margin-top:14px"></div>
 </div>
 <div class="card" style="margin-top:13px"><h2>Månedlig afstemning og nationalitetsøkonomi</h2><p class="sub small">Faktisk salg, passagerantal og modelens DKK/pax efter nationalitetsandel i hver måned.</p><div id="salesMonths"></div></div>
 </section>
@@ -503,7 +503,7 @@ function renderSales(m){
  stat('Fordelt på nationaliteter',d.valid?money(d.modeledTotal)+' '+unit:'—',d.valid?'Modelsum afstemt til faktiske salgstal':'Mangler data')+
  stat('Passagerregistreringer',d.valid?fmt(d.registrations):'—',d.valid?d.rows.length+' lande · '+d.monthly.length+' matched måneder':'Mangler data');
  if(!d.valid){
-  for(const id of ['salesTable','salesShareBars','salesMonthlyChart','salesMonths','salesShiftResult','salesShiftNote'])$(id).innerHTML='<div class="empty">Vælg én indlæst afdeling og måneder med både JetReports og passagerfil.</div>';
+  for(const id of ['salesTable','salesShareBars','salesMonthlyChart','salesMonths','salesShiftResult','salesShiftNote','salesRefCompare'])$(id).innerHTML='<div class="empty">Vælg én indlæst afdeling og måneder med både JetReports og passagerfil.</div>';
   $('salesBalance').textContent='';$('salesShiftBase').textContent='';return d;
  }
  const sort=$('salesSort').value||'revenue';
@@ -541,7 +541,10 @@ function renderSales(m){
  ...top3.map(t=>row.values.has(t.country)?fmt(row.values.get(t.country),1):'—')]));
  const country=$('salesShiftCountry').value;const sh=Number($('salesShiftNumber').value)||0;
  const calc=shiftedSales(d,country,sh),base=d.registrations?100*(d.allA.get(country)||0)/d.registrations:0;
- $('salesShiftBase').textContent='Aktuel andel: '+fmt(base,1)+'% · valgt ændring: '+(sh>=0?'+':'')+fmt(sh)+' pp';
+ const refItem=d.rows.find(x=>x.country===country);
+$('salesShiftBase').textContent='Aktuel andel '+m.ya+': '+fmt(base,1)+'%'+(refItem?.refShare!=null?' · '+m.yb+': '+fmt(refItem.refShare*100,1)+'% · historisk forskel: '+(refItem.pp>=0?'+':'')+fmt(refItem.pp,1)+' pp':'')+' · dit scenarie: '+(sh>=0?'+':'')+fmt(sh)+' pp';
+const reference=mixScenario(m);
+$('salesRefCompare').textContent=reference.valid?'Med præcis nationalitetsmixet fra '+m.yb+' (måned for måned) bliver modelomsætningen '+money(reference.revenue)+' DKK mod faktisk '+money(reference.actualRevenue)+' DKK. Modeldifference '+(reference.delta>=0?'+':'')+money(reference.delta)+' DKK. Skift forbrugsindeks for at afprøve forskellige hypoteser.':'For at sammenligne med referenceårets paxmix indlæses passagerfiler for begge år med samme måneder.';
  $('salesShiftResult').innerHTML=calc?'<div class="label">Beregnet ændring i Taxfree/valgt afdeling</div><strong class="'+(calc.delta>0?'pos':calc.delta<0?'neg':'')+'">'+(calc.delta>0?'+':'')+money(calc.delta)+' '+unit+'</strong><span class="sub small">DKK/pax '+fmt(calc.spend,1)+' → '+fmt(calc.altSpend,1)+'</span>':'';
  $('salesShiftNote').textContent='Effekten afhænger både af ændret nationalitetsandel og af antaget relativt forbrug. Hvis alle forbrugsindeks = 100, vil flere tyskere/færinger ikke ændre beregnet DKK/pax. En lille historisk mix-forskel giver derfor kun en lille modelændring. Denne følsomhedsberegning er ikke en måling af, hvad en bestemt nationalitet faktisk køber.';
  window.salesExport=[['Land','Registreringer','Paxandel %','Andel B %','Forbrugsindeks','Model salgsandel %','Model DKK/pax','Modelleret omsætning DKK','Forskel salg-pax pp'],
@@ -715,6 +718,10 @@ $('salesShiftCountry').addEventListener('change',()=>renderSales(lastModel));
 $('salesShiftSlider').addEventListener('input',e=>{$('salesShiftNumber').value=e.target.value;renderSales(lastModel)});
 $('salesShiftNumber').addEventListener('change',e=>{let v=Math.min(30,Math.max(-30,Number(e.target.value)||0));e.target.value=String(v);$('salesShiftSlider').value=String(v);renderSales(lastModel)});
 $('salesShiftReset').onclick=()=>{$('salesShiftSlider').value='0';$('salesShiftNumber').value='0';renderSales(lastModel)};
+$('salesExampleDE').onclick=()=>{scenarioIndices.clear();scenarioIndices.set('DE',120);$('salesShiftCountry').value='DE';$('salesShiftSlider').value='10';$('salesShiftNumber').value='10';renderSales(lastModel);renderScenario(lastModel);renderReport(lastModel)};
+$('salesExampleFO').onclick=()=>{scenarioIndices.clear();scenarioIndices.set('FO',120);$('salesShiftCountry').value='FO';$('salesShiftSlider').value='10';$('salesShiftNumber').value='10';renderSales(lastModel);renderScenario(lastModel);renderReport(lastModel)};
+$('salesResetAll').onclick=()=>{scenarioIndices.clear();$('salesShiftSlider').value='0';$('salesShiftNumber').value='0';renderSales(lastModel);renderScenario(lastModel);renderReport(lastModel)};
+
 $('salesTable').addEventListener('change',e=>{
  const input=e.target.closest('[data-sales-index]');if(!input)return;
  const country=input.dataset.salesIndex,index=Number(input.value);
