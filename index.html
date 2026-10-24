@@ -96,8 +96,9 @@ for(const [key,n] of obj.by){const [country,group,category,rowStatus,from,to,age
 if(rowStatus==='NSH')nsh+=n;if((status==='exclude'&&rowStatus==='NSH')||(status==='nsh'&&rowStatus!=='NSH'))continue;
 total+=n;countries.set(country,(countries.get(country)||0)+n);byNation.set(group,(byNation.get(group)||0)+n)}
 return {total,countries,byNation,nsh,coverage:obj}}
-function relevantMonths(y,scope){const p=paxFiles.get(+y);if(!p)return [];const available=[];for(let m=1;m<=12;m++)if(p.months.has(m)&&salesMonth(+y,m,scope))available.push(m);return available}
-function resolveMonths(yA,yB,choice,scope){if(choice>=1&&choice<=12)return [choice];if(choice===13){const a=relevantMonths(yA,scope);const b=availableMonths(yB);return yB?a.filter(m=>b.includes(m)):a}return relevantMonths(yA,scope)}
+function financeMonths(y,scope){return Array.from({length:12},(_,i)=>i+1).filter(mm=>!!salesMonth(+y,mm,scope))}
+function relevantMonths(y,scope){const p=availableMonths(y);return p.length?p:financeMonths(y,scope)}
+function resolveMonths(yA,yB,choice,scope){if(choice>=1&&choice<=12)return [choice];if(choice===13){const a=relevantMonths(yA,scope);const b=relevantMonths(yB,scope);return yB?a.filter(m=>b.includes(m)):a}return relevantMonths(yA,scope)}
 function aggregate(y,monthsList,scope,status,nation){let known=0,totP=0,allP=0,groups=new Map(),rev=0,budget=0,gp=0,result=0,spendPax=0,hasFinance=0,jetPax=0,calendar=[];
 for(const m of monthsList){const p=summaryPax(y,m,status,nation),s=salesMonth(y,m,scope);if(p){known++;allP+=p.total;for(const [k,v] of p.countries)groups.set(k,(groups.get(k)||0)+v);totP+=p.total}
 if(s){hasFinance++;rev+=s.income;budget+=s.budget;gp+=s.gp;result+=s.result;jetPax+=s.pax||0}
