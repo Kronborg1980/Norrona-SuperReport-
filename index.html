@@ -270,6 +270,43 @@ const volume=m.cmp&&B.jetPax? (A.jetPax-B.jetPax)*(B.rev/B.jetPax):null,rate=m.c
 $('bridge').innerHTML=volume==null||rate==null?'<div class="empty">Indlæs regnskab og passagerdata for samme måneder i begge år for en sammenligning.</div>':matrix(['Komponent','Ændring DKK'],[['Flere/færre passagerer',money(volume)],['Forbrug pr. passager',money(rate)],['Omsætning i alt',money(A.rev-B.rev)]])+'<p class="sub small">Eksakt dekomponering: (pax A − pax B) × oms./pax B + pax A × (oms./pax A − oms./pax B).</p>';
 $('assocTable').innerHTML=matrix(['År','Måned','Nationalitet %','Oms./pax DKK','Paxmix','Omsætning'],points.map(p=>[String(p.y),months[p.m],fmt(p.share,1)+'%',fmt(p.spend,1),fmt(p.pax),money(p.revenue)]));
 }
+
+function deeperReport(m){
+ const all={country:'ALL',route:'ALL',category:'ALL',age:'ALL'};
+ const ar=detailRows(m.ya,m.ma,m.status,all),br=detailRows(m.yb,m.mb,m.status,all);
+ const ta=sum(ar.map(x=>x.n)),tb=sum(br.map(x=>x.n));
+ const dims=[['country','Nationaliteter'],['route','Sejlruter'],['category','Passagerkategorier'],['age','Aldersgrupper'],['nation','Nationalitetsgrupper']];
+ const blocks=[];
+ for(const [dim,title] of dims){
+ const {ga,gb,keys}=topSegments(ar,br,dim);
+ const aTotal=ta,bTotal=tb,calc=k=>({name:detailLabel(dim,k),a:ga.get(k)||0,b:gb.get(k)||0});
+ const relevant=keys.map(calc);const byVolume=relevant.slice(0,5);
+ const byMix=m.paxCmp?relevant.filter(v=>v.b||v.a).map(v=>({...v,shift:(aTotal?100*v.a/aTotal:0)-(bTotal?100*v.b/bTotal:0)})).sort((x,y)=>Math.abs(y.shift)-Math.abs(x.shift)).slice(0,5):[];
+ let detail=title+': '+(byVolume.length?byVolume.map(v=>v.name+' '+fmt(v.a)+' ('+(aTotal?fmt(100*v.a/aTotal,1):'0')+'%)').join('; '):'Ingen passagerer')+'.';
+ if(m.paxCmp&&byMix.length)detail+=' Største ændringer i mix-andel mod '+m.yb+': '+byMix.map(v=>v.name+' '+(v.shift>=0?'+':'')+fmt(v.shift,1)+' procentpoint').join('; ')+'.';
+ blocks.push([title,detail]);
+ }
+ const statusAllA=m.ma.map(mm=>summaryPax(m.ya,mm,'all',m.nation)).filter(Boolean);
+ const statusAllB=m.mb.map(mm=>summaryPax(m.yb,mm,'all',m.nation)).filter(Boolean);
+ const nshA=sum(statusAllA.map(p=>p.nsh)),nA=sum(statusAllA.map(p=>p.total));
+ const nshB=sum(statusAllB.map(p=>p.nsh)),nB=sum(statusAllB.map(p=>p.total));
+ blocks.push(['Bookingstatus og no-shows',
+ 'A: '+fmt(nshA)+' registreringer med NSH ud af '+fmt(nA)+' ('+(nA?fmt(100*nshA/nA,2):'—')+'%). '+
+ (m.paxCmp?'B: '+fmt(nshB)+' NSH ud af '+fmt(nB)+' ('+(nB?fmt(100*nshB/nB,2):'—')+'%). ':'')+
+ 'De øvrige bookingstatusser tælles med i All pax; de har ikke nødvendigvis samme definition som det officielle antal rejsende.']);
+ const assoc=countryAssociation(m).filter(x=>x.r!=null||x.rr!=null).sort((a,b)=>Math.abs(b.rr??b.r??0)-Math.abs(a.rr??a.r??0)).slice(0,6);
+ blocks.push(['Nationalitetsmix og omsætning pr. pax',
+ assoc.length?'Blandt de største nationaliteter med tilstrækkelige månedspunkter: '+
+ assoc.map(v=>showCountry(v.country)+(v.rr!=null?' samme-måned-ændring r='+fmt(v.rr,2)+' ('+v.nYoY+' punkter)': ' månedligt r='+fmt(v.r,2)+' ('+v.n+' punkter)')).join('; ')+'. Statistisk samvariation er ikke det samme som den enkelte nationalitets forbrug.':
+ 'Der er ikke tilstrækkeligt med matched månedsdata fra flere år til at sammenligne variation i nationalitetsandel med omsætning pr. passager.']);
+ const leader=ar.length?bucket(ar,'country'):new Map();
+ const focus=[...leader].sort((a,b)=>b[1]-a[1]).slice(0,3);
+ blocks.push(['Konkrete undersøgelser for ledelsen',
+ 'Undersøg først om ændringer i ruter, passagerkategorier og aldersfordeling følger de største forskydninger for '+
+ (focus.length?focus.map(x=>showCountry(x[0])).join(', '):'de største nationaliteter')+
+ '. Sammenhold dernæst prisniveau, sæson, kapacitetsudnyttelse, cateringtilbud og butikskampagner i den valgte afdeling. Månedsomsætning pr. pax kan ikke fordeles mellem nationaliteter uden transaktionskobling.']);
+ return blocks;
+}
 function renderReport(m){const A=m.A,B=m.B,pp=A.pax?100*(A.groups.get(focusCountry(m))||0)/A.pax:null,bpp=B.pax?100*(B.groups.get(focusCountry(m))||0)/B.pax:null;
 const changes=m.paxCmp?[...new Set([...A.groups.keys(),...B.groups.keys()])].map(k=>({k,pp:100*(A.groups.get(k)||0)/A.pax-100*(B.groups.get(k)||0)/B.pax})).sort((x,y)=>Math.abs(y.pp)-Math.abs(x.pp)).slice(0,4):[];
 const reportCountry=focusCountry(m),data=dataPairs(m,reportCountry),corr=pearson(data.map(x=>x.share),data.map(x=>x.spend)),match=matchedPairs(data),co=pearson(match.map(x=>x.ds),match.map(x=>x.dr));
@@ -283,6 +320,7 @@ const dep=departmentSnapshot(m.ya,m.ma);
 sections.push(['Afdelinger',dep.map(x=>DEPTS[x.dep]+': omsætning '+(x.o.hasFinance?money(x.o.rev)+' DKK':'mangler')+', resultat '+(x.o.hasFinance?money(x.o.result)+' DKK':'mangler')).join('. ')+'.']);
 sections.push(['Anbefalede beslutningsspor','Sammenhold ændringerne i nationalitetsandel med omsætning pr. passager på samme kalendermåneder. Kontroller priser, kampagner og ruter, før effekten tilskrives nationalitet. Se særligt på F&B og TFS hver for sig. Hvis nationalitetsbestemt faktisk forbrug ønskes, kræver det transaktionsdata koblet til booking eller passagergruppe.']);
 sections.push(['Beregningsforbehold','Nationalitetsmix kommer fra passagerregistreringer, mens omsætning og rapporterede passagertal kommer fra JetReports. Det er to datakilder med mulig afvigende definition. Resultater for flere afdelinger korrigeres for F&B/GAL-intern kabysallokering. Omsætning på nationaliteter kan ikke måles direkte i disse filer.']);
+sections.push(...deeperReport(m));
 reportPlain=sections.map(([h,c])=>h.toUpperCase()+'\n'+c).join('\n\n');
 $('reportScope').textContent=months[m.mo]+' '+m.ya+(m.yb?' mod '+m.yb:'')+' · '+(DEPTS[m.dept]||'Alle afdelinger');
 $('reportText').innerHTML=sections.map(([h,c])=>'<h3>'+escape(h)+'</h3><p>'+escape(c)+'</p>').join('');
@@ -319,8 +357,17 @@ let s=p.addSlide();s.background={color:C.navy};s.addText('MS NORRÖNA',{x:4,y:3.
 s=p.addSlide();head(s,'Kommercielt overblik','Omsætning, passagertal og resultat');const values=[['Omsætning',A.completeFinance?money(A.rev)+' DKK':'Mangler'],['Passagerregistreringer',A.completePax?fmt(A.pax):'Mangler'],['Omsætning pr. pax',A.spend==null?'Mangler':fmt(A.spend,1)+' DKK'],['Resultat',A.completeFinance?money(A.result)+' DKK':'Mangler']];
 values.forEach((v,i)=>{const x=2.4+i*5.0;s.addShape(p.ShapeType.roundRect,{x,y:4,w:4.5,h:3,fill:{color:'F2F6F8'},line:{color:'DEE7EC',width:1}});s.addText(v[0],{x:x+.3,y:4.3,w:4,h:.5,fontSize:16,color:C.mute,fontFace:FT});s.addText(v[1],{x:x+.3,y:5.05,w:4,h:1.1,fontSize:26,bold:true,color:C.navy,fontFace:FT})});s.addText(sections[2][1],{x:2.4,y:8.5,w:20,h:2.3,fontSize:23,color:C.ink,breakLine:false,fontFace:FT});foot(s);
 s=p.addSlide();head(s,'Passagermix','Nationalitet og ændringer i passagersammensætning');const top=mixEntries(A).slice(0,9);const data=top.map(([k,n])=>[showCountry(k),fmt(n),A.pax?fmt(100*n/A.pax,1)+'%':'—']);s.addTable([['Nationalitet','Passagerer','Andel']].concat(data),{x:2.4,y:3.9,w:19.6,colW:[9.6,5,5],fontFace:FT,fontSize:20,rowH:.65,border:{type:'solid',color:'DFE9EE',pt:.5},color:C.ink,autoFit:false});foot(s);
+s=p.addSlide();head(s,'Mix-skift: hvem fylder mere?','Ændring i andelen af passagerregistreringer (procentpoint)');const mixChanges=m.paxCmp?[...new Set([...A.groups.keys(),...B.groups.keys()])].map(k=>({k,n:A.groups.get(k)||0,pp:100*(A.groups.get(k)||0)/A.pax-100*(B.groups.get(k)||0)/B.pax})).sort((a,b)=>Math.abs(b.pp)-Math.abs(a.pp)).slice(0,9):[];
+if(mixChanges.length){s.addTable([['Nationalitet','Antal A','Mix-skift pp']].concat(mixChanges.map(x=>[showCountry(x.k),fmt(x.n),(x.pp>0?'+':'')+fmt(x.pp,1)+' pp'])),{x:2.4,y:3.9,w:19.6,colW:[9.6,5,5],fontFace:FT,fontSize:20,rowH:.65,border:{type:'solid',color:'DFE9EE',pt:.5},color:C.ink})}else{s.addText('Mangler to sammenlignelige passagerår. Importér begge års passagerfiler.',{x:2.4,y:4.3,w:19,h:1.5,fontSize:28,color:C.mute,fontFace:FT})}foot(s);
+s=p.addSlide();head(s,'Dybere passagerprofil','Ruter, kategorier og alder · år '+m.ya);
+const profile=deeperReport(m).slice(1,4);
+profile.forEach((d,i)=>{s.addText(d[0],{x:2.35,y:3.6+i*3,w:20,h:.55,fontSize:20,bold:true,color:C.navy,fontFace:FT});
+s.addText(d[1].slice(0,410),{x:2.35,y:4.22+i*3,w:20,h:2.0,fontSize:15,color:C.ink,fontFace:FT,breakLine:false})});foot(s);
 s=p.addSlide();head(s,'Afdelingernes performance','FNB · TFS · REC · ACC · GAL');const dep=departmentSnapshot(m.ya,m.ma),rows=dep.map(({dep,o})=>[DEPTS[dep],o.hasFinance?money(o.rev):'—',o.hasFinance?money(o.result):'—']);s.addTable([['Afdeling','Omsætning DKK','Resultat DKK']].concat(rows),{x:2.4,y:4,w:19.6,colW:[9.2,5.2,5.2],fontFace:FT,fontSize:22,rowH:.9,border:{type:'solid',color:'DFE9EE',pt:.6},color:C.ink});foot(s);
 s=p.addSlide();head(s,'Hænger nationalitet og salg sammen?','Observationer – ikke dokumenteret årsag');s.addText(sections[4][1],{x:2.4,y:4,w:19.4,h:4.3,fontSize:25,color:C.ink,breakLine:false,fontFace:FT});s.addText(sections[6][1],{x:2.4,y:9,w:19.4,h:2.3,fontSize:20,color:C.mute,fontFace:FT});foot(s);
+s=p.addSlide();head(s,'Passagermix og salgsudvikling','Statistiske sammenhænge – ikke bevis for årsag');
+const associations=countryAssociation(m).filter(r=>r.r!=null||r.rr!=null).sort((a,b)=>Math.abs(b.rr??b.r??0)-Math.abs(a.rr??a.r??0)).slice(0,9);
+if(associations.length){s.addTable([['Nationalitet','Andel A','Månedlig r','År-mod-år r']].concat(associations.map(x=>[showCountry(x.country),x.ppA==null?'—':fmt(x.ppA,1)+'%',x.r==null?'—':fmt(x.r,2),x.rr==null?'—':fmt(x.rr,2)])),{x:2.4,y:3.9,w:19.6,colW:[7.6,3.4,4.3,4.3],fontFace:FT,fontSize:18,rowH:.66,border:{type:'solid',color:'DFE9EE',pt:.5},color:C.ink})}else{s.addText('Der er endnu ikke nok samkørende månedspunkter til at beregne korrelationsoversigten.',{x:2.4,y:4.1,w:19,h:2,fontSize:25,color:C.mute,fontFace:FT})}foot(s);
 s=p.addSlide();head(s,'Konklusion og næste skridt','Management decision brief');s.addText(sections[5][1],{x:2.4,y:4,w:19.4,h:3.2,fontSize:22,color:C.ink,fontFace:FT});s.addText(sections[6][1],{x:2.4,y:8,w:19.4,h:3.7,fontSize:21,color:C.ink,fontFace:FT});foot(s);
 await p.writeFile({fileName:'Norrona_SuperReport_'+m.ya+'.pptx'});};
 const buttons=[$('pptBtn'),$('pptBtn2')];buttons.forEach(b=>b.disabled=true);
@@ -339,8 +386,8 @@ $('nav').addEventListener('click',e=>{let b=e.target.closest('[data-tab]');if(!b
 $('csvBtn').onclick=()=>csvDownload(exportRows,'norrona_passagermix.csv');
 $('deepCSV').onclick=()=>csvDownload(window.deepExport||[],'norrona_mix_dybde.csv');
 for(const id of ['deepDimension','deepCountry','deepRoute','deepCategory','deepAge'])$(id).addEventListener('change',()=>renderAll());
-$('reportCSV').onclick=()=>{const rs=[['År','Måned','Afdeling','Passagerregistreringer','JetReports pax','Omsætning DKK','Resultat DKK','Andel valgt land %']];const m=lastModel;
-for(const y of years())for(let mo=1;mo<=12;mo++){let p=summaryPax(y,mo,m.status,m.nation),s=salesMonth(y,mo,m.dept);if(!p&&!s)continue;rs.push([y,mo,m.dept,p?.total??'',s?.pax??'',s?.income??'',s?.result??'',p?.total?100*(p.countries.get(m.nation)||0)/p.total:''])}csvDownload(rs,'norrona_superreport_maaneder.csv')};
+$('reportCSV').onclick=()=>{const rs=[['År','Måned','Afdeling','Passagerregistreringer','JetReports pax','Omsætning DKK','Resultat DKK','Andel vist nationalitet %']];const m=lastModel;
+for(const y of years())for(let mo=1;mo<=12;mo++){let p=summaryPax(y,mo,m.status,m.nation),s=salesMonth(y,mo,m.dept);if(!p&&!s)continue;rs.push([y,mo,m.dept,p?.total??'',s?.pax??'',s?.income??'',s?.result??'',p?.total?100*(p.countries.get(focusCountry(m))||0)/p.total:''])}csvDownload(rs,'norrona_superreport_maaneder.csv')};
 $('pptBtn').onclick=powerPoint;$('pptBtn2').onclick=powerPoint;$('printBtn').onclick=()=>window.print();
 $('copyBtn').onclick=()=>navigator.clipboard.writeText(reportPlain).then(()=>{$('copyBtn').textContent='Rapport kopieret';setTimeout(()=>$('copyBtn').textContent='Kopiér rapporttekst',2400)}).catch(()=>alert('Kopiering blev afvist af browseren'));
 }
