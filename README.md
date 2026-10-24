@@ -57,3 +57,16 @@ Når både Nationalitet og Bookingstatus står på All pax, analyseres alle pass
 Når der vælges en specifik nationalitet, skifter X-aksen til den pågældende nationalitets andel (%) af månedens samlede registreringer. Analyseboksen, ledelsesrapporten, CSV-eksporten og PowerPointens analyseslide følger valget. Tabellen med nationaliteternes individuelle sammenhænge findes fortsat nedenunder.
 
 Bemærk, at et større passagerantal i sig selv kan påvirke omsætning pr. passager, og at pax-registreringer og JetReports-pax ikke nødvendigvis har samme definition. Korrelation må ikke fortolkes som årsag.
+
+## Taxfree alene og paxmix-scenarie
+
+- Hvis kun én afdeling er importeret (fx TFS), vælges den automatisk. Omsætning, resultat og omsætning pr. pax vises for de indlæste regnskabsmåneder, selv om hele året ikke er afsluttet.
+- **Fælles måneder (YTD)** begrænses til måneder med finansdata i det valgte år, når disse findes. Fremtidige passagerbookinger bliver ikke regnet som allerede realiseret salg.
+- **Paxmix-simulator**: Faktisk omsætning og JetReports-pax i år A kombineres med paxmixet fra år B. Man behøver ikke JetReports for år B.
+- Brug 100 som forbrugsindeks for lige forbrug pr. nationalitet. 120 er et hypotetisk indeks på 20% højere forbrug end 100. Modellen justeres separat måned for måned, så eksempelvis juli-sæsonen ikke sammenblandes med andre måneder.
+- Vis **modelleret** DKK pr. pax og omsætning pr. nationalitet, følsomhed for tyskere/færinger/danskere, månedsoversigt og scenarieeffekt. CSV og PowerPoint omfatter beregningerne. Modellerede nationalitetsbeløb må ikke omtales som målte køb.
+- Ved indeks 100 for alle grupper bliver scenarieeffekten nul, og sum af estimeret omsætning på nationaliteter er lig totalen fra JetReports.
+
+## September og eksportens datoer
+
+De to særskilte filer er gennemgået: september 2025 indeholder 10.430 registreringer; september 2026 indeholder 10.852 registreringer. 2026-registreringerne dækker afgange dateret 1.–29. september og også afgange i oktober–december. Der ses ikke tegn på, at eksporten er afkortet ved 150.000-rækkersgrænsen (2026-filen har 112.482 registreringer). Den sidste afgangsdato 29. september betyder ikke i sig selv, at 30. september mangler – der sejles ikke nødvendigvis hver dag. Kontroller med afgangskalenderen, hvis fuld afgangsdækning skal garanteres. SuperReports Datakontrol viser datoer og omfang frem for automatisk at kalde måneden ufuldstændig.
