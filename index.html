@@ -429,6 +429,113 @@ $('reportScope').textContent=months[m.mo]+' '+m.ya+(m.yb?' mod '+m.yb:'')+' · '
 $('reportText').innerHTML=sections.map(([h,c])=>'<h3>'+escape(h)+'</h3><p>'+escape(c)+'</p>').join('');
 return sections}
 
+
+function nationalitySales(m){
+ const monthsUsed=m.ma.filter(mm=>{const j=salesMonth(m.ya,mm,m.dept),p=summaryPax(m.ya,mm,m.status,m.nation);return j&&j.pax>0&&p&&p.total>0});
+ const by=new Map(),monthly=[],allA=new Map(),allB=new Map();
+ let revenue=0,officialPax=0,registrations=0,refRegistrations=0,refMonths=0;
+ const index=k=>scenarioIndices.has(k)?scenarioIndices.get(k):100;
+ for(const month of monthsUsed){
+  const j=salesMonth(m.ya,month,m.dept),p=summaryPax(m.ya,month,m.status,m.nation),b=summaryPax(m.yb,month,m.status,m.nation);
+  const keys=[...p.countries.keys()],weightedMean=sum(keys.map(c=>(p.countries.get(c)||0)/p.total*index(c)/100));
+  if(weightedMean<=0)continue;
+  revenue+=j.income;officialPax+=j.pax;registrations+=p.total;
+  if(b?.total>0){refRegistrations+=b.total;refMonths++;for(const [k,n] of b.countries)allB.set(k,(allB.get(k)||0)+n)}
+  const values=new Map();
+  for(const [country,count] of p.countries){
+   allA.set(country,(allA.get(country)||0)+count);
+   if(!by.has(country))by.set(country,{country,count:0,modeledPax:0,modelRevenue:0,refCount:0});
+   const row=by.get(country),share=count/p.total,weight=index(country)/100,amount=j.income*share*weight/weightedMean;
+   row.count+=count;row.modeledPax+=j.pax*share;row.modelRevenue+=amount;
+   values.set(country,j.income/j.pax*weight/weightedMean);
+  }
+  monthly.push({month,actual:j.income,officialPax:j.pax,registrations:p.total,mean:j.income/j.pax,values,byCountry:p.countries,weight:weightedMean,reference:b});
+ }
+ const completeRef=monthly.length>0&&refMonths===monthly.length;
+ const rows=[...by.values()].map(row=>{
+  const saleShare=revenue>0?row.modelRevenue/revenue:0,paxShare=registrations>0?row.count/registrations:0;
+  return {...row,index:index(row.country),paxShare,saleShare,modeledPerPax:row.modeledPax?row.modelRevenue/row.modeledPax:null,
+   refShare:completeRef&&refRegistrations>0?(allB.get(row.country)||0)/refRegistrations:null,
+   pp:completeRef&&refRegistrations>0?100*(paxShare-(allB.get(row.country)||0)/refRegistrations):null,
+   salesMinusPax:100*(saleShare-paxShare)};
+ });
+ const totalModeled=sum(rows.map(x=>x.modelRevenue)),allCountries=[...new Set([...allA.keys(),...allB.keys()])];
+ const entire=monthly.length>0&&revenue>0&&officialPax>0;
+ return {valid:entire,monthly,rows,allCountries,allA,allB,revenue,officialPax,registrations,refRegistrations,refMonths,completeRef,
+  spend:entire?revenue/officialPax:null,modeledTotal:totalModeled,balance:totalModeled-revenue,usedMonths:monthly.map(x=>x.month)};
+}
+function shiftedSales(model,country,changePp){
+ if(!model.valid||!country)return null;
+ let alternative=0,actual=0,officialPax=0,detail=[];
+ for(const row of model.monthly){
+  const base=(row.byCountry.get(country)||0)/row.registrations;
+  const target=Math.min(1,Math.max(0,base+changePp/100));
+  const weight=(scenarioIndices.has(country)?scenarioIndices.get(country):100)/100;
+  const remainingWeight=base<1?(row.weight-base*weight)/(1-base):1;
+  const newWeight=target*weight+(1-target)*remainingWeight;
+  const projected=row.actual*newWeight/row.weight;
+  if(!Number.isFinite(projected))continue;
+  actual+=row.actual;alternative+=projected;officialPax+=row.officialPax;
+  detail.push({month:row.month,baselineShare:base,scenarioShare:target,actual:row.actual,projected});
+ }
+ return {country,changePp,actual,alternative,delta:alternative-actual,spend:officialPax?actual/officialPax:null,altSpend:officialPax?alternative/officialPax:null,detail};
+}
+function renderSales(m){
+ const d=nationalitySales(m);
+ const sourceLabel=DEPTS[m.dept]||'Hele skibet',unit=$('currency').value==='KDKK'?'1.000 DKK':'DKK';
+ const foot=d.valid?d.usedMonths.map(mm=>months[mm].slice(0,3)).join(', ')+' '+m.ya:'Ingen sammenhørende måneder';
+ $('salesKPIs').innerHTML=
+ stat('Faktisk omsætning · '+sourceLabel,d.valid?money(d.revenue)+' '+unit:'—',foot)+
+ stat('Faktisk omsætning pr. pax',d.valid?fmt(d.spend,1)+' DKK':'—','JetReports-pax: '+fmt(d.officialPax))+
+ stat('Fordelt på nationaliteter',d.valid?money(d.modeledTotal)+' '+unit:'—',d.valid?'Modelsum afstemt til faktiske salgstal':'Mangler data')+
+ stat('Passagerregistreringer',d.valid?fmt(d.registrations):'—',d.valid?d.rows.length+' lande · '+d.monthly.length+' matched måneder':'Mangler data');
+ if(!d.valid){
+  for(const id of ['salesTable','salesShareBars','salesMonthlyChart','salesMonths','salesShiftResult','salesShiftNote'])$(id).innerHTML='<div class="empty">Vælg én indlæst afdeling og måneder med både JetReports og passagerfil.</div>';
+  $('salesBalance').textContent='';$('salesShiftBase').textContent='';return d;
+ }
+ const sort=$('salesSort').value||'revenue';
+ const sorted=[...d.rows].sort((a,b)=>sort==='pax'?b.paxShare-a.paxShare:
+  sort==='perpax'?(b.modeledPerPax||0)-(a.modeledPerPax||0):
+  sort==='lift'?b.salesMinusPax-a.salesMinusPax:sort==='country'?a.country.localeCompare(b.country):b.modelRevenue-a.modelRevenue);
+ const available=[...sorted].sort((a,b)=>b.count-a.count);
+ select('salesShiftCountry',available.map(x=>[x.country,showCountry(x.country)]),$('salesShiftCountry').value||available.find(x=>x.country==='DE')?.country||available[0]?.country||'');
+ const tableRows=sorted.map(x=>[
+  escape(showCountry(x.country)),fmt(x.count),fmt(100*x.paxShare,1)+'%',
+  x.refShare==null?'—':fmt(x.refShare*100,1)+'%',
+  '<input type="number" class="sales-input" min="25" max="250" step="5" data-sales-index="'+escape(x.country)+'" value="'+fmt(x.index)+'" aria-label="Forbrugsindeks for '+escape(showCountry(x.country))+'">',
+  fmt(100*x.saleShare,1)+'%',fmt(x.modeledPerPax,1)+' DKK',
+  money(x.modelRevenue)+' '+unit,
+  (x.salesMinusPax>=0?'+':'')+fmt(x.salesMinusPax,1)+' pp'
+ ]);
+ const hdr=['Land','Registreringer','Paxandel','Andel '+(m.yb||'B'),'Forbrugsindeks','Model salgsandel','Model DKK/pax','Modelomsætning','Salg − pax'];
+ $('salesTable').innerHTML=matrix(hdr,tableRows);
+ $('salesBalance').textContent='Afstemning: Faktisk regnskabsomsætning '+money(d.revenue)+' '+unit+' · Beregnet fordeling '+money(d.modeledTotal)+' '+unit+' · Difference '+fmt(d.balance,2)+' DKK. Nationaliteternes andele fordeles måned for måned; officiel JetReports-pax bruges kun én gang.';
+ const top=[...sorted].sort((a,b)=>b.count-a.count).slice(0,10);
+ const max=Math.max(1,...top.flatMap(r=>[r.paxShare,r.saleShare]));
+ $('salesShareBars').innerHTML=top.map(x=>'<div class="shareline"><span title="'+escape(showCountry(x.country))+'">'+escape(showCountry(x.country))+'</span>'+
+  '<div><div class="bar-sub" title="Paxandel '+fmt(100*x.paxShare,1)+'%"><i style="width:'+(100*x.paxShare/max)+'%"></i></div>'+
+  '<div class="bar-sub alt" title="Modelleret salgsandel '+fmt(100*x.saleShare,1)+'%"><i style="width:'+(100*x.saleShare/max)+'%"></i></div></div>'+
+  '<span class="num" style="text-align:right;font-size:11px"><span class="sales-actual">'+fmt(100*x.paxShare,1)+'%</span><br><span class="sales-model">'+fmt(100*x.saleShare,1)+'%</span></span></div>').join('')+
+ '<p class="sub small" style="margin-top:12px"><i class="label-dot" style="background:#39afe0"></i>Passagerandel&nbsp;&nbsp;&nbsp;<i class="label-dot" style="background:#e0a020"></i>Beregnet salgsandel</p>';
+ const top3=available.slice(0,3);
+ const monthly=(name,color,getter)=>({name,color,values:Array.from({length:12},(_,index)=>{const mo=d.monthly.find(z=>z.month===index+1);return mo?getter(mo):null})});
+ $('salesMonthlyChart').innerHTML=drawLine([
+  monthly('Faktisk alle pax','#35b9e5',r=>r.mean),
+  ...top3.map((r,i)=>monthly(showCountry(r.country),['#e0a020','#4dd1a1','#cc9cfd'][i],row=>row.values.get(r.country)??null))
+ ],months,'Omsætning pr. JetReports-passager og model efter nationalitet');
+ $('salesMonths').innerHTML=matrix(['Måned','Omsætning '+unit,'JetReports-pax','Passagerregistreringer','DKK/pax faktisk',...top3.map(r=>showCountry(r.country)+' model DKK/pax')],
+ d.monthly.map(row=>[months[row.month],money(row.actual),fmt(row.officialPax),fmt(row.registrations),fmt(row.mean,1),
+ ...top3.map(t=>row.values.has(t.country)?fmt(row.values.get(t.country),1):'—')]));
+ const country=$('salesShiftCountry').value;const sh=Number($('salesShiftNumber').value)||0;
+ const calc=shiftedSales(d,country,sh),base=d.registrations?100*(d.allA.get(country)||0)/d.registrations:0;
+ $('salesShiftBase').textContent='Aktuel andel: '+fmt(base,1)+'% · valgt ændring: '+(sh>=0?'+':'')+fmt(sh)+' pp';
+ $('salesShiftResult').innerHTML=calc?'<div class="label">Beregnet ændring i Taxfree/valgt afdeling</div><strong class="'+(calc.delta>0?'pos':calc.delta<0?'neg':'')+'">'+(calc.delta>0?'+':'')+money(calc.delta)+' '+unit+'</strong><span class="sub small">DKK/pax '+fmt(calc.spend,1)+' → '+fmt(calc.altSpend,1)+'</span>':'';
+ $('salesShiftNote').textContent='Effekten afhænger både af ændret nationalitetsandel og af antaget relativt forbrug. Hvis alle forbrugsindeks = 100, vil flere tyskere/færinger ikke ændre beregnet DKK/pax. En lille historisk mix-forskel giver derfor kun en lille modelændring. Denne følsomhedsberegning er ikke en måling af, hvad en bestemt nationalitet faktisk køber.';
+ window.salesExport=[['Land','Registreringer','Paxandel %','Andel B %','Forbrugsindeks','Model salgsandel %','Model DKK/pax','Modelleret omsætning DKK','Forskel salg-pax pp'],
+ ...sorted.map(x=>[x.country,x.count,x.paxShare*100,x.refShare==null?'':x.refShare*100,x.index,x.saleShare*100,x.modeledPerPax,x.modelRevenue,x.salesMinusPax]),
+ [],['Faktisk omsætning',d.revenue],['Estimeret total',d.modeledTotal],['Afstemning DKK',d.balance],['Faktisk DKK/pax',d.spend]];
+ return d;
+}
 function mixScenario(m){
  const monthsUsed=m.ma.filter(mm=>{const j=salesMonth(m.ya,mm,m.dept),a=summaryPax(m.ya,mm,m.status,m.nation),b=summaryPax(m.yb,mm,m.status,m.nation);return m.yb&&j?.pax>0&&a?.total>0&&b?.total>0});
  const cur=aggregate(m.ya,monthsUsed,m.dept,m.status,m.nation),ref=aggregate(m.yb,monthsUsed,m.dept,m.status,m.nation);
@@ -528,7 +635,7 @@ if(!preserve&&loaded.length>1)$('dept').value=loaded.length===5?'ALL':loaded[0];
 const cs=new Set();for(let obj of paxFiles.values())for(let m of obj.months.values())for(let key of m.by.keys())cs.add(JSON.parse(key)[0]);
 select('nation',[['ALL','Alle nationaliteter (All pax)'],...[...cs].sort().map(x=>[x,showCountry(x)])],preserve?$('nation').value:'ALL');
 refreshDeepSelectors();sourceHTML();renderAll()}
-function renderAll(){lastModel=buildModel();$('mainNote').innerHTML=warningNotes(lastModel);renderOverview(lastModel);renderPax(lastModel);renderDeep(lastModel);renderDept(lastModel);renderLinks(lastModel);renderCountryAssociations(lastModel);renderScenario(lastModel);renderReport(lastModel);renderQuality(lastModel)}
+function renderAll(){lastModel=buildModel();$('mainNote').innerHTML=warningNotes(lastModel);renderOverview(lastModel);renderPax(lastModel);renderSales(lastModel);renderDeep(lastModel);renderDept(lastModel);renderLinks(lastModel);renderCountryAssociations(lastModel);renderScenario(lastModel);renderReport(lastModel);renderQuality(lastModel)}
 async function readFiles(files){const selected=[...files].filter(f=>/\.(xlsx|xls|xlsm)$/i.test(f.name));if(!selected.length)return;
 let imported=[],errors=[];t('Indlæser '+selected.length+' fil(er)…');
 for(const file of selected){try{const buffer=await file.arrayBuffer(),wb=XLSX.read(buffer,{type:'array',raw:true});if(wb.Sheets.input&&wb.Sheets.main){const x=parseJet(wb,file.name);jetFiles.set(x.year+'|'+x.dep,x);imported.push(x.dep+' '+x.year)}else{const x=parsePax(wb,file.name);for(const [year,obj] of x.years)paxFiles.set(year,obj);imported.push('PAX '+x.years.size+' år')}
