@@ -421,6 +421,19 @@ sections.push(['Afdelinger',dep.map(x=>DEPTS[x.dep]+': omsætning '+(x.o.hasFina
 sections.push(['Anbefalede beslutningsspor','Sammenhold ændringerne i nationalitetsandel med omsætning pr. passager på samme kalendermåneder. Kontroller priser, kampagner og ruter, før effekten tilskrives nationalitet. Se særligt på F&B og TFS hver for sig. Hvis nationalitetsbestemt faktisk forbrug ønskes, kræver det transaktionsdata koblet til booking eller passagergruppe.']);
 sections.push(['Beregningsforbehold','Nationalitetsmix kommer fra passagerregistreringer, mens omsætning og rapporterede passagertal kommer fra JetReports. Det er to datakilder med mulig afvigende definition. Resultater for flere afdelinger korrigeres for F&B/GAL-intern kabysallokering. Omsætning på nationaliteter kan ikke måles direkte i disse filer.']);
 sections.push(...deeperReport(m));
+const nationFinance=nationalitySales(m);
+if(nationFinance.valid){
+ const leaders=[...nationFinance.rows].sort((a,b)=>b.modelRevenue-a.modelRevenue).slice(0,12);
+ sections.push(['Omsætning og DKK pr. pax fordelt på nationalitet – model',
+ 'Faktisk '+(DEPTS[m.dept]||'skibets')+' omsætning i matched måneder: '+money(nationFinance.revenue)+' DKK, fordelt på '+fmt(nationFinance.officialPax)+' officielle JetReports-pax. Faktisk omsætning pr. pax: '+fmt(nationFinance.spend,1)+' DKK. '+
+ 'Nationalitetsfordelingen er en månedlig model med relative forbrugsindeks. '+
+ leaders.map(o=>showCountry(o.country)+': '+fmt(o.count)+' registreringer; '+fmt(o.paxShare*100,1)+'% af paxmix; '+fmt(o.saleShare*100,1)+'% af beregnet omsætningsandel; '+fmt(o.modeledPerPax,1)+' DKK pr. beregnet officielt pax; '+money(o.modelRevenue)+' DKK modelomsætning (indeks '+fmt(o.index)+')').join('. ')+'. '+
+ 'Kontrol: Den estimerede omsætning fordelt på nationaliteter afviger med '+fmt(nationFinance.balance,2)+' DKK fra faktisk JetReports-omsætning. Indeks 100 for alle lande betyder samme DKK/pax på alle nationaliteter. Ingen af nationalitetsbeløbene er direkte målt ved en kasse.']);
+ const selected=$('salesShiftCountry').value,shift=Number($('salesShiftNumber').value)||0,whatif=shiftedSales(nationFinance,selected,shift);
+ if(whatif)sections.push(['Flere/færre '+showCountry(selected)+' – what-if',
+ 'En ændring på '+(shift>=0?'+':'')+fmt(shift)+' procentpoint i landets passagerandel, hvor de øvrige lande omfordeles proportionalt, giver med de valgte forbrugsindeks en modelomsætning på '+money(whatif.alternative)+' DKK mod faktisk '+money(whatif.actual)+' DKK. Beregnet forskel: '+(whatif.delta>=0?'+':'')+money(whatif.delta)+' DKK. Dette er en hypotetisk følsomhed, ikke dokumenteret købsadfærd.']);
+}
+
 const sc=mixScenario(m);
 sections.push(['Paxmix-scenarie med referenceår '+(sc.yB||'—'),
 sc.valid?'For '+sc.monthsUsed.length+' sammenhørende måneder er faktisk omsætning '+money(sc.actualRevenue)+' DKK, svarende til '+fmt(sc.actual,1)+' DKK pr. JetReports-pax. Med nationalitetsmixet fra '+sc.yB+' og de valgte forbrugsindeks viser modellen '+fmt(sc.other,1)+' DKK pr. pax og '+money(sc.revenue)+' DKK i omsætning. Scenarieforskellen er '+(sc.delta>=0?'+':'')+money(sc.delta)+' DKK. Forbrugsindeks og modellerede køb pr. nationalitet er antagelser, ikke faktisk målte transaktioner.':'Scenariet kræver en JetReport i år A og passagerfiler for begge år for mindst én fælles måned.']);
@@ -672,6 +685,13 @@ const simCountry=mixScenario(m);
 if(simCountry.valid){s.addTable([['Nationalitet','Pax','Model DKK/pax','Model omsætning DKK']].concat(simCountry.rows.slice(0,9).map(x=>[showCountry(x.country),fmt(x.countA),fmt(x.estimate,1),money(x.revenue)])),{x:2.4,y:3.7,w:19.6,colW:[7.5,3.1,4.3,4.7],fontFace:FT,fontSize:17,rowH:.69,border:{type:'solid',color:'DFE9EE',pt:.6},color:C.ink});
 s.addText('Alle beløb pr. nationalitet er beregnet ud fra månedlige indeks, ikke fra personlige transaktionsdata.',{x:2.4,y:11.65,w:19.1,h:.9,fontSize:16,color:C.mute,fontFace:FT});
 }else{s.addText('Vælg en afdeling med regnskab og indlæs begge års passagerfiler.',{x:2.4,y:4,w:19.1,h:2,fontSize:22,color:C.mute,fontFace:FT})}foot(s);
+s=p.addSlide();head(s,'Pax & salg efter nationalitet','Registreret paxmix og hypotetisk salg med indekser');
+const fi=nationalitySales(m);
+if(fi.valid){
+const fr=[['Nationalitet','Paxandel','Salgsandel (model)','Model DKK/pax'],...[...fi.rows].sort((a,b)=>b.modelRevenue-a.modelRevenue).slice(0,9).map(v=>[showCountry(v.country),fmt(v.paxShare*100,1)+'%',fmt(v.saleShare*100,1)+'%',fmt(v.modeledPerPax,1)])];
+s.addTable(fr,{x:2.4,y:3.6,w:19.6,colW:[7.3,4,4.5,3.8],fontFace:FT,fontSize:17,rowH:.68,border:{type:'solid',color:'DFE9EE',pt:.6},color:C.ink});
+s.addText('Salg pr. nationalitet er modelberegnet, ikke verificerede køb. Faktisk samlet DKK/pax: '+fmt(fi.spend,1),{x:2.4,y:11.6,w:19.3,h:1,fontSize:17,color:C.mute,fontFace:FT});
+}else{s.addText('Indlæs Taxfree / valgt afdeling og en passagerfil med samme måneder.',{x:2.4,y:4,w:19,h:2,fontSize:23,color:C.mute,fontFace:FT})}foot(s);
 s=p.addSlide();head(s,'Konklusion og næste skridt','Management decision brief');s.addText(sections[5][1],{x:2.4,y:4,w:19.4,h:3.2,fontSize:22,color:C.ink,fontFace:FT});s.addText(sections[6][1],{x:2.4,y:8,w:19.4,h:3.7,fontSize:21,color:C.ink,fontFace:FT});foot(s);
 await p.writeFile({fileName:'Norrona_SuperReport_'+m.ya+'.pptx'});};
 const buttons=[$('pptBtn'),$('pptBtn2')];buttons.forEach(b=>b.disabled=true);
@@ -689,6 +709,19 @@ for(const id of ['ya','yb','mo','dept','nation','status','currency'])$(id).addEv
 $('nav').addEventListener('click',e=>{let b=e.target.closest('[data-tab]');if(!b)return;currentTab=b.dataset.tab;for(const v of $('nav').querySelectorAll('button'))v.classList.toggle('on',v===b);for(const sec of document.querySelectorAll('.tabs>section'))sec.classList.toggle('active',sec.id==='tab-'+currentTab)});
 $('csvBtn').onclick=()=>csvDownload(exportRows,'norrona_passagermix.csv');
 $('deepCSV').onclick=()=>csvDownload(window.deepExport||[],'norrona_mix_dybde.csv');
+$('salesCSV').onclick=()=>csvDownload(window.salesExport||[],'norrona_nationalitet_omsætning.csv');
+$('salesSort').addEventListener('change',()=>renderSales(lastModel));
+$('salesShiftCountry').addEventListener('change',()=>renderSales(lastModel));
+$('salesShiftSlider').addEventListener('input',e=>{$('salesShiftNumber').value=e.target.value;renderSales(lastModel)});
+$('salesShiftNumber').addEventListener('change',e=>{let v=Math.min(30,Math.max(-30,Number(e.target.value)||0));e.target.value=String(v);$('salesShiftSlider').value=String(v);renderSales(lastModel)});
+$('salesShiftReset').onclick=()=>{$('salesShiftSlider').value='0';$('salesShiftNumber').value='0';renderSales(lastModel)};
+$('salesTable').addEventListener('change',e=>{
+ const input=e.target.closest('[data-sales-index]');if(!input)return;
+ const country=input.dataset.salesIndex,index=Number(input.value);
+ if(!Number.isFinite(index)||index<25||index>250){input.value=String(scenarioIndices.get(country)||100);return}
+ scenarioIndices.set(country,index);renderSales(lastModel);renderScenario(lastModel);renderReport(lastModel);
+});
+
 $('scenarioCSV').onclick=()=>csvDownload(scenarioExport,'norrona_paxmix_scenarie.csv');
 $('scenarioCountries').addEventListener('change',e=>{const node=e.target.closest('[data-index-country]');if(!node)return;const index=Number(node.value);if(index>=25&&index<=250&&Number.isFinite(index)){scenarioIndices.set(node.dataset.indexCountry,index);renderScenario(lastModel);renderReport(lastModel)}else node.value=fmt(scenarioIndices.get(node.dataset.indexCountry)||100)});
 $('presetDE').onclick=()=>{scenarioIndices.clear();scenarioIndices.set('DE',120);renderScenario(lastModel);renderReport(lastModel)};
