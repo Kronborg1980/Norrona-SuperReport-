@@ -48,3 +48,12 @@ En enkelt statisk HTML-fil. Excel-filerne indlæses af SheetJS i browseren. Powe
 - **Passagerfiler alene:** Fælles måneder og passagermix kan analyseres uden indlæste JetReports. Omsætning kræver de tilsvarende regnskaber.
 
 **Definition:** “All pax” betyder alle registreringer i passagereksporten, inklusive NSH. Det er ikke nødvendigvis identisk med JetReports' officielle rejsetal. SuperReport viser afvigelsen under Datakontrol og anvender JetReports-pax som nævner for omsætning pr. passager.
+
+
+## All pax og Sammenhæng
+
+Når både Nationalitet og Bookingstatus står på All pax, analyseres alle passagerregistreringer. Under **Sammenhæng** viser punktdiagrammets X-akse samlet antal registreringer pr. måned og Y-aksen afdelingens omsætning pr. JetReports-passager. Det er altså ikke længere automatisk Tyskland.
+
+Når der vælges en specifik nationalitet, skifter X-aksen til den pågældende nationalitets andel (%) af månedens samlede registreringer. Analyseboksen, ledelsesrapporten, CSV-eksporten og PowerPointens analyseslide følger valget. Tabellen med nationaliteternes individuelle sammenhænge findes fortsat nedenunder.
+
+Bemærk, at et større passagerantal i sig selv kan påvirke omsætning pr. passager, og at pax-registreringer og JetReports-pax ikke nødvendigvis har samme definition. Korrelation må ikke fortolkes som årsag.
