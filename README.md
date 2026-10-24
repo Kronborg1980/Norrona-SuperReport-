@@ -70,3 +70,20 @@ Bemærk, at et større passagerantal i sig selv kan påvirke omsætning pr. pass
 ## September og eksportens datoer
 
 De to særskilte filer er gennemgået: september 2025 indeholder 10.430 registreringer; september 2026 indeholder 10.852 registreringer. 2026-registreringerne dækker afgange dateret 1.–29. september og også afgange i oktober–december. Der ses ikke tegn på, at eksporten er afkortet ved 150.000-rækkersgrænsen (2026-filen har 112.482 registreringer). Den sidste afgangsdato 29. september betyder ikke i sig selv, at 30. september mangler – der sejles ikke nødvendigvis hver dag. Kontroller med afgangskalenderen, hvis fuld afgangsdækning skal garanteres. SuperReports Datakontrol viser datoer og omfang frem for automatisk at kalde måneden ufuldstændig.
+
+## Pax & Salg – detaljeret nationalitetsøkonomi
+
+Fanen **Pax & Salg** bruger de **faktiske månedsomsætninger og JetReports-passagertal** for den valgte afdeling og de valgte måneder. Du kan arbejde med **kun Taxfree** samt en eller flere års passagerfiler – der er ikke krav om alle fem JetReports.
+
+Tabelvisningen viser for hver nationalitet:
+- registreringer og procentandel af passagermixet samt referenceårets andel,
+- **modelleret omsætningsandel i %**, **modelleret DKK pr. pax** og **modelleret omsætning i DKK**,
+- relativt forbrugsindeks (redigeres direkte i tabellen) og forskellen mellem salgsandel og paxandel.
+
+**Beregning:** Hver måned beregnes landets passagerandel i passagereksporten. Indekset anvendes som en relativ vægt; vægtene normaliseres, så summen af modellens nationalitetsomsætning i måneden præcis er den **faktiske omsætning fra JetReports**. JetReports-pax fordeles efter nationalitetsandel til beregning af DKK pr. pax for landet. De enkelte beløb er ikke faktiske køb pr. nationalitet. Med indeks 100 for alle lande bliver model-DKK/pax ens og modellens salgsandel identisk med passagerandelen.
+
+**Hvad-nu-hvis:** Vælg eksempelvis DE eller FO og ændr deres andel med op til ±30 procentpoint. Andre nationaliteters andele tilpasses proportionalt, og det faktiske månedlige passagerantal fastholdes. Beregningen giver model-DKK/pax, simuleret totalomsætning og ændring i kroner. Der findes testknapper for en tydelig, **hypotetisk** kombination: indeks 120 og +10 procentpoint for DE eller FO. Der vises også ændringen i nationalitetsandel mellem år A og år B.
+
+**Hvorfor kan den beregnede effekt være lille?** Hvis nationalitetsmixet kun ændres 0,7 procentpoint fra et år til næste, kan ændringen i modelleret omsætning også være meget lille. Indeks 100 på alle grupper giver altid nul mixeffekt. Det betyder ikke, at nationaliteterne faktisk har ens købsadfærd, men at data ikke indeholder identificerbare køb pr. nationalitet. Faktiske købsforskelle kræver kassesystem-/POS-transaktioner, der kan forbindes på lovlig og pålidelig vis med nationalitet/booking.
+
+Ledelsesrapport, CSV og PowerPoint indeholder modeloversigten. Passagermix-fanen har også en kort økonomisk oversigt og genvej til den detaljerede analyse.
