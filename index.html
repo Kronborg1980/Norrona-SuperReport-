@@ -11,7 +11,7 @@
 <div class="dz" id="drop" role="button" tabindex="0"><div class="dz-icon">⇧</div><div><strong>Træk passagerfiler og JetReports hertil</strong><p>Indlæs 2024, 2025, 2026 … samt FNB, TFS, REC, ACC og GAL. Tilføj nye filer når som helst.</p></div><button>Vælg filer</button></div><input id="input" type="file" accept=".xlsx,.xls,.xlsm" multiple hidden>
 <div class="source-row" id="sources"></div>
 <div class="filters">
-<div><label>År A</label><select id="ya"></select></div><div><label>Måned / periode</label><select id="mo"></select></div><div><label>År B</label><select id="yb"></select></div><div><label>Afdeling</label><select id="dept"></select></div><div><label>Nationalitet i analysen</label><select id="nation"></select></div><div><label>Bookingstatus</label><select id="status"><option value="exclude">Uden no-show</option><option value="all">Alle registreringer</option><option value="nsh">Kun no-show</option></select></div><div><label>Valuta</label><select id="currency"><option value="DKK">DKK</option><option value="KDKK">1.000 DKK</option></select></div>
+<div><label>År A</label><select id="ya"></select></div><div><label>Måned / periode</label><select id="mo"></select></div><div><label>År B</label><select id="yb"></select></div><div><label>Afdeling</label><select id="dept"></select></div><div><label>Nationalitet i analysen</label><select id="nation"></select></div><div><label>Bookingstatus</label><select id="status"><option value="all">All pax · alle registreringer</option><option value="exclude">Uden no-show</option><option value="nsh">Kun no-show</option></select></div><div><label>Valuta</label><select id="currency"><option value="DKK">DKK</option><option value="KDKK">1.000 DKK</option></select></div>
 </div>
 <div id="mainNote"></div>
 <div class="tabs">
@@ -92,7 +92,7 @@ if(scope==='ALL'&&included.some(z=>z.dep==='FNB')&&included.some(z=>z.dep==='GAL
 return o}
 function summaryPax(y,m,status,nation){const obj=paxFiles.get(+y)?.months.get(m);if(!obj)return null;let total=0,countries=new Map(),byNation=new Map(),nsh=0;
 for(const [key,n] of obj.by){const [country,group,category,rowStatus,from,to,age,kind]=JSON.parse(key);
-if(rowStatus==='NSH')nsh+=n;if(status==='exclude'&&rowStatus==='NSH'||status==='nsh'&&rowStatus!=='NSH')continue;
+if(rowStatus==='NSH')nsh+=n;if((status==='exclude'&&rowStatus==='NSH')||(status==='nsh'&&rowStatus!=='NSH'))continue;
 total+=n;countries.set(country,(countries.get(country)||0)+n);byNation.set(group,(byNation.get(group)||0)+n)}
 return {total,countries,byNation,nsh,coverage:obj}}
 function relevantMonths(y,scope){const p=paxFiles.get(+y);if(!p)return [];const available=[];for(let m=1;m<=12;m++)if(p.months.has(m)&&salesMonth(+y,m,scope))available.push(m);return available}
@@ -146,7 +146,7 @@ $('spendChart').innerHTML=drawLine(pairs,months,'Omsætning pr. passager');
 horizontalBars('mixBars',A);
 }
 function renderPax(m){const A=m.A,B=m.B;const german=A.groups.get('DE')||0,danish=A.groups.get('DK')||0,faroe=A.groups.get('FO')||0;
-$('paxStats').innerHTML=stat('Registreringer, A',A.completePax?fmt(A.pax):'—','Uden no-shows som standard')+stat('Tyskere (DE)',A.completePax?fmt(german):'—',A.pax?fmt(german/A.pax*100,1)+'% af mixet':'')+stat('Danskere (DK)',A.completePax?fmt(danish):'—',A.pax?fmt(danish/A.pax*100,1)+'% af mixet':'')+stat('Færinger (FO)',A.completePax?fmt(faroe):'—',A.pax?fmt(faroe/A.pax*100,1)+'% af mixet':'');
+$('paxStats').innerHTML=stat('Registreringer, A',A.completePax?fmt(A.pax):'—','Alle registreringer som standard')+stat('Tyskere (DE)',A.completePax?fmt(german):'—',A.pax?fmt(german/A.pax*100,1)+'% af mixet':'')+stat('Danskere (DK)',A.completePax?fmt(danish):'—',A.pax?fmt(danish/A.pax*100,1)+'% af mixet':'')+stat('Færinger (FO)',A.completePax?fmt(faroe):'—',A.pax?fmt(faroe/A.pax*100,1)+'% af mixet':'');
 horizontalBars('paxBars',A,m.yb?B:undefined);
 let entries=[...new Set([...A.groups.keys(),...B.groups.keys()])].sort((x,y)=>(A.groups.get(y)||0)-(A.groups.get(x)||0));const mx=Math.max(1,...entries.map(k=>A.groups.get(k)||0));
 $('shareChart').innerHTML=entries.slice(0,11).map(k=>'<div class="trow"><span style="width:110px">'+escape(showCountry(k))+'</span><div class="bar"><div class="fill" style="width:'+(100*(A.groups.get(k)||0)/mx)+'%"></div></div><b style="width:64px;text-align:right">'+(A.pax?fmt(100*(A.groups.get(k)||0)/A.pax,1)+'%':'—')+'</b></div>').join('')||'<div class="empty">Ingen data</div>';
@@ -159,7 +159,8 @@ $('deptTable').innerHTML=deptTableHtml(snap);
 const series=Object.keys(DEPTS).map((d,i)=>({name:d,color:['#37b4e0','#e0a020','#42d2a0','#be95e9','#f28a95'][i],values:Array.from({length:12},(_,j)=>salesMonth(m.ya,j+1,d)?.income??null)}));
 $('deptChart').innerHTML=drawLine(series,months,'Afdelingsomsætning');
 }
-function dataPairs(m){const out=[];for(const y of years())for(let month=1;month<=12;month++){const p=summaryPax(y,month,m.status,m.nation),s=salesMonth(y,month,m.dept);if(p&&s&&s.pax>0&&p.total>0){const share=100*(p.countries.get(m.nation)||0)/p.total;out.push({y,m:month,share,spend:s.income/s.pax,pax:p.total,revenue:s.income})}}
+function focusCountry(m){return m.nation!=='ALL'?m.nation:(mixEntries(m.A)[0]?.[0]||mixEntries(m.B)[0]?.[0]||'DE')}
+function dataPairs(m,country=focusCountry(m)){const out=[];for(const y of years())for(let month=1;month<=12;month++){const p=summaryPax(y,month,m.status,m.nation),s=salesMonth(y,month,m.dept);if(p&&s&&s.pax>0&&p.total>0){const share=100*(p.countries.get(country)||0)/p.total;out.push({y,m:month,share,spend:s.income/s.pax,pax:p.total,revenue:s.income})}}
 return out}
 function pearson(x,y){if(x.length<6)return null;const n=x.length,ax=sum(x)/n,ay=sum(y)/n,xx=sum(x.map(v=>(v-ax)**2)),yy=sum(y.map(v=>(v-ay)**2));return xx>0&&yy>0?sum(x.map((v,i)=>(v-ax)*(y[i]-ay)))/Math.sqrt(xx*yy):null}
 function drawScatter(points){if(points.length<2)return '<div class="empty">Indlæs flere måneder med både finans- og passagerdata</div>';const W=550,H=270,L=58,T=15,R=15,B=37;let xs=points.map(x=>x.share),ys=points.map(x=>x.spend),a=Math.min(...xs),b=Math.max(...xs),c=Math.min(...ys),d=Math.max(...ys);if(a===b){a-=1;b+=1}if(c===d){c-=1;d+=1}a-=.5;b+=.5;c-=5;d+=5;
@@ -170,22 +171,22 @@ for(let p of points)h+='<circle cx="'+X(p.share)+'" cy="'+Y(p.spend)+'" r="5" fi
 return h+'</svg><div class="sub small">X = nationalitetsandel · Y = omsætning pr. JetReports-pax (DKK)</div>'}
 function matchedPairs(points){let res=[];let by=new Map(points.map(p=>[p.y+'|'+p.m,p]));for(let p of points){let prior=by.get((p.y-1)+'|'+p.m);if(prior)res.push({y:p.y,m:p.m,ds:p.share-prior.share,dr:p.spend-prior.spend})}return res}
 function renderLinks(m){const points=dataPairs(m),corr=pearson(points.map(p=>p.share),points.map(p=>p.spend)),matches=matchedPairs(points),corrYoY=pearson(matches.map(p=>p.ds),matches.map(p=>p.dr)),A=m.A,B=m.B;
-$('assocCards').innerHTML=stat('Sammenhæng (r)',corr==null?'—':fmt(corr,2),points.length+' månedspunkter – beskrivende statistik')+stat('Sæsonkorrigeret YoY (r)',corrYoY==null?'—':fmt(corrYoY,2),matches.length+' ens måneder i på hinanden følgende år')+stat('Valgt nationalitet',showCountry(m.nation),m.A.pax?fmt(100*(A.groups.get(m.nation)||0)/A.pax,1)+'% af passagermix i A':'Ingen passagertal');
+$('assocCards').innerHTML=stat('Sammenhæng (r)',corr==null?'—':fmt(corr,2),points.length+' månedspunkter – beskrivende statistik')+stat('Sæsonkorrigeret YoY (r)',corrYoY==null?'—':fmt(corrYoY,2),matches.length+' ens måneder i på hinanden følgende år')+stat('Nationalitet i punktdiagram',showCountry(focusCountry(m)),m.A.pax?fmt(100*(A.groups.get(focusCountry(m))||0)/A.pax,1)+'% af passagermix i A':'Ingen passagertal');
 $('scatter').innerHTML=drawScatter(points);
 $('scatterNote').textContent=corr==null?'Der skal mindst 6 måneder med variation til en korrelationsberegning.':'Korrelation viser samvariation, ikke at nationalitet er årsag til købene. Sæson, priser, sejlruter og kampagner kan påvirke begge dele.';
 const volume=m.cmp&&B.jetPax? (A.jetPax-B.jetPax)*(B.rev/B.jetPax):null,rate=m.cmp&&A.jetPax?(A.rev/A.jetPax-B.rev/B.jetPax)*A.jetPax:null;
 $('bridge').innerHTML=volume==null||rate==null?'<div class="empty">Indlæs regnskab og passagerdata for samme måneder i begge år for en sammenligning.</div>':matrix(['Komponent','Ændring DKK'],[['Flere/færre passagerer',money(volume)],['Forbrug pr. passager',money(rate)],['Omsætning i alt',money(A.rev-B.rev)]])+'<p class="sub small">Eksakt dekomponering: (pax A − pax B) × oms./pax B + pax A × (oms./pax A − oms./pax B).</p>';
 $('assocTable').innerHTML=matrix(['År','Måned','Nationalitet %','Oms./pax DKK','Paxmix','Omsætning'],points.map(p=>[String(p.y),months[p.m],fmt(p.share,1)+'%',fmt(p.spend,1),fmt(p.pax),money(p.revenue)]));
 }
-function renderReport(m){const A=m.A,B=m.B,pp=A.pax?100*(A.groups.get(m.nation)||0)/A.pax:null,bpp=B.pax?100*(B.groups.get(m.nation)||0)/B.pax:null;
+function renderReport(m){const A=m.A,B=m.B,pp=A.pax?100*(A.groups.get(focusCountry(m))||0)/A.pax:null,bpp=B.pax?100*(B.groups.get(focusCountry(m))||0)/B.pax:null;
 const changes=m.paxCmp?[...new Set([...A.groups.keys(),...B.groups.keys()])].map(k=>({k,pp:100*(A.groups.get(k)||0)/A.pax-100*(B.groups.get(k)||0)/B.pax})).sort((x,y)=>Math.abs(y.pp)-Math.abs(x.pp)).slice(0,4):[];
-const data=dataPairs(m),corr=pearson(data.map(x=>x.share),data.map(x=>x.spend)),match=matchedPairs(data),co=pearson(match.map(x=>x.ds),match.map(x=>x.dr));
+const reportCountry=focusCountry(m),data=dataPairs(m,reportCountry),corr=pearson(data.map(x=>x.share),data.map(x=>x.spend)),match=matchedPairs(data),co=pearson(match.map(x=>x.ds),match.map(x=>x.dr));
 const sections=[];
 sections.push(['Datagrundlag','Analyseperiode A: '+m.ma.map(x=>months[x]).join(', ')+' '+m.ya+'. '+(m.yb?'Analyseperiode B: '+m.mb.map(x=>months[x]).join(', ')+' '+m.yb+'. ':'')+'Afdeling: '+(DEPTS[m.dept]||'Alle kommercielle')+'. Regnskabsdata: '+A.hasFinance+'/'+m.ma.length+' måneder i A. Passagermix: '+A.known+'/'+m.ma.length+' måneder i A.']);
 sections.push(['Hovedtal',A.completeFinance?'Omsætningen i A er '+money(A.rev)+' DKK. '+(A.spend!=null?'Omsætning pr. rapporteret JetReports-passager er '+fmt(A.spend,1)+' DKK. ':'')+'Resultatet er '+money(A.result)+' DKK.':'Der mangler fuldt regnskabsgrundlag til den valgte periode.']);
 sections.push(['Sammenligning med år B',m.cmp?'Omsætningen er ændret med '+money(A.rev-B.rev)+' DKK ('+pct(dividerPct(A.rev,B.rev))+'). Omsætning pr. JetReports-passager er ændret med '+pct(dividerPct(A.spend,B.spend))+'. Passagerregistreringer ændrede sig med '+pct(dividerPct(A.pax,B.pax))+'.':m.paxCmp?'Passagermix kan sammenlignes, men regnskabsdata for begge år er endnu ikke komplet til samme måneder.':'En fuld sammenligning kræver de samme tilgængelige måneder i begge år.']);
 sections.push(['Passagersammensætning','Registreringer efter statusfilter i A: '+fmt(A.pax)+'. '+(m.paxCmp?'Største ændringer i nationalitetsandel: '+changes.map(v=>showCountry(v.k)+' '+(v.pp>0?'+':'')+fmt(v.pp,1)+' procentpoint').join('; ')+'.':'Indlæs sammenlignelige passagerdata fra år B for mix-forskelle.')]);
-sections.push(['Analyse af '+showCountry(m.nation),'Valgt nationalitetsandel i A er '+(pp==null?'ukendt':fmt(pp,1)+'%')+(m.paxCmp?', mod '+fmt(bpp,1)+'% i B':'')+'. '+(corr==null?'Der er ikke nok matched måneder til en robust korrelationsbeskrivelse.':'På tværs af '+data.length+' tilgængelige måneder er Pearson r = '+fmt(corr,2)+' mellem nationalitetsandel og omsætning pr. pax.')+(co==null?'':' Når der sammenlignes samme kalendermåned år-for-år er r = '+fmt(co,2)+' baseret på '+match.length+' punkter.')+' Sammenhæng er ikke bevis for årsag.']);
+sections.push(['Analyse af '+(m.nation==='ALL'?'største nationalitetsgruppe: ':'')+showCountry(reportCountry),'Valgt nationalitetsandel i A er '+(pp==null?'ukendt':fmt(pp,1)+'%')+(m.paxCmp?', mod '+fmt(bpp,1)+'% i B':'')+'. '+(corr==null?'Der er ikke nok matched måneder til en robust korrelationsbeskrivelse.':'På tværs af '+data.length+' tilgængelige måneder er Pearson r = '+fmt(corr,2)+' mellem nationalitetsandel og omsætning pr. pax.')+(co==null?'':' Når der sammenlignes samme kalendermåned år-for-år er r = '+fmt(co,2)+' baseret på '+match.length+' punkter.')+' Sammenhæng er ikke bevis for årsag.']);
 const dep=departmentSnapshot(m.ya,m.ma);
 sections.push(['Afdelinger',dep.map(x=>DEPTS[x.dep]+': omsætning '+(x.o.hasFinance?money(x.o.rev)+' DKK':'mangler')+', resultat '+(x.o.hasFinance?money(x.o.result)+' DKK':'mangler')).join('. ')+'.']);
 sections.push(['Anbefalede beslutningsspor','Sammenhold ændringerne i nationalitetsandel med omsætning pr. passager på samme kalendermåneder. Kontroller priser, kampagner og ruter, før effekten tilskrives nationalitet. Se særligt på F&B og TFS hver for sig. Hvis nationalitetsbestemt faktisk forbrug ønskes, kræver det transaktionsdata koblet til booking eller passagergruppe.']);
@@ -205,7 +206,7 @@ if(!preserve&&yr.length>1)$('yb').value=String(yr[1]);
 select('mo',months.map((x,i)=>[i,x]),preserve?$('mo').value:13);
 select('dept',[['ALL','Alle afdelinger'],...Object.entries(DEPTS).map(([k,v])=>[k,v])]);
 const cs=new Set();for(let obj of paxFiles.values())for(let m of obj.months.values())for(let key of m.by.keys())cs.add(JSON.parse(key)[0]);
-select('nation',[...cs].sort().map(x=>[x,showCountry(x)]),preserve?$('nation').value:(cs.has('DE')?'DE':([...cs][0]||'')));
+select('nation',[['ALL','Alle nationaliteter (All pax)'],...[...cs].sort().map(x=>[x,showCountry(x)])],preserve?$('nation').value:'ALL');
 sourceHTML();renderAll()}
 function renderAll(){lastModel=buildModel();$('mainNote').innerHTML=warningNotes(lastModel);renderOverview(lastModel);renderPax(lastModel);renderDept(lastModel);renderLinks(lastModel);renderReport(lastModel);renderQuality(lastModel)}
 async function readFiles(files){const selected=[...files].filter(f=>/\.(xlsx|xls|xlsm)$/i.test(f.name));if(!selected.length)return;
