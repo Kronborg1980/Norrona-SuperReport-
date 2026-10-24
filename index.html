@@ -21,8 +21,8 @@
 <section id="tab-dept"><div class="grid g4" id="deptCards"></div><div class="card" style="margin-top:13px"><h2>Alle afdelinger · perioden i år A</h2><p class="sub small">GAL og ACC er primært omkostningscentre. Konsolideringen korrigerer F&B's interne kabysomkostning.</p><div id="deptTable"></div></div><div class="card" style="margin-top:13px"><h2>Månedlig omsætning efter afdeling</h2><div id="deptChart"></div></div></section>
 <section id="tab-links"><div class="grid g3" id="assocCards"></div><div class="grid g2" style="margin-top:13px"><div class="card"><h2 id="scatterTitle">All pax · passagerantal vs. omsætning pr. pax</h2><p id="scatterInfo" class="sub small">Alle registrerede passagerer indgår. Skift til en nationalitet for at analysere dens andel i stedet.</p><div id="scatter"></div><div class="sub small" id="scatterNote"></div></div><div class="card"><h2>Ændringen i omsætningen forklaret</h2><div id="bridge"></div></div></div><div class="card" style="margin-top:13px"><h2>Hvilke nationaliteter følges af ændringer i salg pr. passager?</h2><p class="sub small">Rangeret oversigt. Positiv eller negativ korrelation er ikke dokumentation for, at den pågældende nationalitet har forårsaget ændringen. Få måneder giver intet beregnet r.</p><div id="countryAssoc"></div></div><div class="card" style="margin-top:13px"><h2>Månedstal bag analysen</h2><div id="assocTable"></div></div></section>
 <section id="tab-scenario"><div class="hero"><div class="eyebrow">Paxmix · scenarieanalyse</div><h2>Hvad hvis vi havde præcis samme nationalitetsmix som referenceåret?</h2><div class="sub">Vælg en afdeling, og se den faktiske omsætning pr. pax mod et alternativt passagermix. Scenariet bruger åbne antagelser, ikke opdigtede personkøb.</div></div>
-<div class="card"><div class="row"><div><h2>Fasthold nationalitetsmix fra år B</h2><p class="sub small">År A = faktisk salg · År B = alternativ nationalitetsfordeling. Beregnes for samme måneder med begge passagereksporter og en JetReport.</p></div><div class="row"><button id="presetDE" class="gold">Tyskere +20%</button><button id="presetFO">Færinger +20%</button><button id="resetScenario">Ens forbrug (100)</button><button id="scenarioCSV">Eksportér scenarie</button></div></div><div class="quality" id="scenarioCoverage" style="margin:12px 0"></div><div id="scenarioCards" class="grid g4"></div><div class="notice" id="scenarioMethod">Forbrugsindeks er antagelser og ikke faktisk omsætning efter nationalitet.</div><div id="scenarioCountries" style="margin-top:14px"></div></div>
-<div class="grid g2" style="margin-top:13px"><div class="card"><h2>Faktisk vs. samme passagermix</h2><div id="scenarioCompare"></div></div><div class="card"><h2>Nationalitetsmix og salgsudvikling</h2><div id="scenarioEvidence"></div></div></div></section>
+<div class="card"><div class="row"><div><h2>Fasthold nationalitetsmix fra år B</h2><p class="sub small">År A = faktisk salg · År B = alternativ nationalitetsfordeling. Beregnes for samme måneder med begge passagereksporter og en JetReport.</p></div><div class="row"><button id="presetDE" class="gold">Tyskere +20%</button><button id="presetFO">Færinger +20%</button><button id="resetScenario">Ens forbrug (100)</button><button id="scenarioCSV">Eksportér scenarie</button></div></div><div class="quality" id="scenarioCoverage" style="margin:12px 0"></div><div id="scenarioCards" class="grid g4"></div><div class="notice" id="scenarioMethod">Forbrugsindeks er antagelser og ikke faktisk omsætning efter nationalitet.</div><div id="scenarioCountries" style="margin-top:14px"></div><p class="sub small" style="margin:13px 0 0">Tallene pr. nationalitet er fordelinger af afdelingens faktiske omsætning ud fra de valgte forbrugsindeks. De er ikke målt i kassen.</p></div>
+<div class="grid g2" style="margin-top:13px"><div class="card"><h2>Faktisk vs. samme passagermix</h2><div id="scenarioCompare"></div></div><div class="card"><h2>Nationalitetsmix og salgsudvikling</h2><div id="scenarioEvidence"></div></div></div><div class="grid g2" style="margin-top:13px"><div class="card"><h2>Måned for måned · faktisk vs. samme mix</h2><div id="scenarioMonthly"></div></div><div class="card"><h2>Følsomhed: relativt forbrugsindeks</h2><div id="scenarioSensitivity"></div><p class="sub small">Viser mulige scenarier, ikke dokumenterede købsforskelle.</p></div></div></section>
 <section id="tab-report"><div class="report-actions"><button id="pptBtn2" class="primary">Generér PowerPoint</button><button id="printBtn">Print / PDF</button><button id="copyBtn">Kopiér rapporttekst</button><button id="reportCSV">Eksportér datatabel</button></div><div class="card"><div class="eyebrow">MS Norröna · management report</div><h1 style="margin-bottom:8px">Passagermix & kommerciel performance</h1><div class="sub" id="reportScope"></div><div class="narrative" id="reportText"></div></div></section>
 <section id="tab-quality"><div class="card"><h2>Datakvalitet og afstemning</h2><p class="sub small">Passagereksport og JetReports tæller ikke nødvendigvis på samme måde. Her vises afvigelserne uden skjulte justeringer.</p><div id="qualityTable"></div></div><div class="card" style="margin-top:13px"><h2>Datakilder og beregningsprincipper</h2><div id="method"></div></div></section>
 </div><div class="footprint">Norröna SuperReport · Analyseværktøj til ledelsesrapportering · © Smyril Line</div></main>
@@ -403,7 +403,7 @@ function mixScenario(m){
  const weight=(group,total)=>sum(keys.map(k=>(group.get(k)||0)/total*index(k)/100)),wa=weight(a.countries,a.total),wb=weight(b.countries,b.total);
  if(!(wa>0&&wb>0))continue;
  const alt=j.income*wb/wa;actualRevenue+=j.income;alternateRevenue+=alt;officialPax+=j.pax;
- perMonth.push({month,actual:j.income,alternative:alt,pax:j.pax,actualSpend:j.income/j.pax,alternateSpend:alt/j.pax});
+ perMonth.push({month,actual:j.income,alternative:alt,pax:j.pax,actualSpend:j.income/j.pax,alternateSpend:alt/j.pax,wa,wb,aCountries:a.countries,bCountries:b.countries,aPax:a.total,bPax:b.total});
  for(const k of keys){const obj=byCountry.get(k),share=(a.countries.get(k)||0)/a.total;
  obj.revenue+=j.income*share*(index(k)/100)/wa;obj.modeledPax+=j.pax*share;
  }
@@ -425,7 +425,7 @@ function renderScenario(m){
  if(noData){
   $('scenarioCountries').innerHTML='<div class="empty">Indlæs passagerdata for begge år og en JetReport for år A i mindst én fælles måned.</div>';
   $('scenarioCompare').innerHTML='<div class="empty">Intet beregneligt scenarie endnu</div>';
-  $('scenarioEvidence').innerHTML='<div class="empty">Indlæs Excel for at se nationale samvariationer</div>';scenarioExport=[];return sc;
+  $('scenarioEvidence').innerHTML='<div class="empty">Indlæs Excel for at se nationale samvariationer</div>';$('scenarioMonthly').innerHTML='<div class="empty">Mangler fælles data.</div>';$('scenarioSensitivity').innerHTML='<div class="empty">Mangler data.</div>';scenarioExport=[];return sc;
  }
  const hdr=['Nationalitet','Registreringer A','Registreringer B','Andel '+sc.yA,'Andel '+sc.yB,'Mixforskel pp','Relativt forbrugsindeks','Model DKK/pax','Modelomsætning DKK'];
  $('scenarioCountries').innerHTML=matrix(hdr,sc.rows.map(r=>[
@@ -435,11 +435,31 @@ function renderScenario(m){
  ]));
  $('scenarioMethod').textContent='Modellerede DKK/pax pr. nationalitet er IKKE observerede personkøb. Vælg et relativt forbrugsindeks (100 = gennemsnitlig antagelse). Indeks 120 betyder en hypotese om 20% højere forbrug end et land med indeks 100. Alle indeks på 100 giver ingen mixeffekt. Faktisk omsætning og officielt pax-tal kommer fra JetReports.';
  $('scenarioCompare').innerHTML='<div class="data-stack"><div class="pill"><span class="muted">Faktisk</span><br><strong>'+fmt(sc.actual,1)+' DKK/pax</strong><br><small>'+money(sc.actualRevenue)+' DKK · '+fmt(sc.officialPax)+' pax</small></div><div class="pill"><span class="muted">Samme mix som '+sc.yB+'</span><br><strong>'+fmt(sc.other,1)+' DKK/pax</strong><br><small>'+money(sc.revenue)+' DKK · uændret paxantal</small></div></div><p class="sub small">Vi fastholder både samlet passagerantal og afdelingens faktiske gennemsnitsomsætning, men omfordeler nationalitetsandelene og anvender dine indeks. Dette er en følsomhedsanalyse – ikke et dokumenteret kausalt tab/gevinst.</p>';
- const assoc=new Map(countryAssociation(m).map(x=>[x.country,x]));
+ $('scenarioMonthly').innerHTML=matrix(['Måned','Faktisk DKK/pax','Med reference-mix','Omsætning ændring'],sc.perMonth.map(p=>[
+months[p.month],fmt(p.actualSpend,1)+' DKK',fmt(p.alternateSpend,1)+' DKK',(p.alternative-p.actual>=0?'+':'')+money(p.alternative-p.actual)+' DKK']));
+const trial=(country,newIndex)=>{
+ const old=scenarioIndices.has(country)?scenarioIndices.get(country):100;
+ let actual=0,alternative=0,pax=0;
+ for(const p of sc.perMonth){
+ const partA=(p.aCountries.get(country)||0)/p.aPax,partB=(p.bCountries.get(country)||0)/p.bPax;
+ const wa=p.wa+partA*(newIndex-old)/100,wb=p.wb+partB*(newIndex-old)/100;
+ if(!(wa>0&&wb>0))continue;
+ actual+=p.actual;alternative+=p.actual*wb/wa;pax+=p.pax;
+ }
+ return {index:newIndex,alternativePax:pax?alternative/pax:null,delta:alternative-actual};
+};
+const focus=['DE','FO','DK'].filter(k=>sc.rows.some(row=>row.country===k));
+const sensitivity=[['Nationalitet','Indeks','Scenarie DKK/pax','Effekt DKK']];
+for(const k of focus)for(const i of [80,100,120]){
+const result=trial(k,i);
+sensitivity.push([showCountry(k),fmt(i),fmt(result.alternativePax,1),(result.delta>0?'+':'')+money(result.delta)]);
+}
+$('scenarioSensitivity').innerHTML=matrix(sensitivity[0],sensitivity.slice(1));
+const assoc=new Map(countryAssociation(m).map(x=>[x.country,x]));
  $('scenarioEvidence').innerHTML=matrix(['Land','Måneds-r','År-år-r','Punkter'],sc.rows.slice(0,10).map(row=>{const a=assoc.get(row.country);return [escape(showCountry(row.country)),a?.r==null?'—':fmt(a.r,2),a?.rr==null?'—':fmt(a.rr,2),fmt(a?.n??0)]}))+'<p class="sub small">r er sammenhæng mellem landets andel og omsætning pr. pax, ikke en måling af landets eget forbrug.</p>';
  scenarioExport=[['Land','Antal A','Antal B','Andel A %','Andel B %','Forbrugsindeks','Model DKK/pax','Modelleret omsætning DKK'],
  ...sc.rows.map(row=>[row.country,row.countA,row.countB,100*row.shareA,100*row.shareB,row.index,row.estimate,row.revenue]),
- [],['Faktisk DKK/pax',sc.actual],['Scenarie DKK/pax',sc.other],['Scenarieforskel DKK',sc.delta],['Faktisk omsætning',sc.actualRevenue],['Scenarieomsætning',sc.revenue]];
+ [],['Faktisk DKK/pax',sc.actual],['Scenarie DKK/pax',sc.other],['Scenarieforskel DKK',sc.delta],['Faktisk omsætning',sc.actualRevenue],['Scenarieomsætning',sc.revenue],[],['Måned','Faktisk omsætning DKK','Scenarieomsætning DKK'],...sc.perMonth.map(v=>[months[v.month],v.actual,v.alternative])];
  return sc;
 }
 function renderQuality(m){const r=[];for(let y of years())for(let mm=1;mm<=12;mm++){const p=summaryPax(y,mm,m.status,m.nation);const jet=salesMonth(y,mm,m.dept);if(!p&&!jet)continue;const jp=jet?.pax??null,diff=jp==null||!p?null:p.total-jp;r.push([String(y),months[mm],p?fmt(p.total):'—',jp==null?'—':fmt(jp),diff==null?'—':(diff>0?'+':'')+fmt(diff),jet?fmt(jet.income):'—'])}
