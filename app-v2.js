@@ -176,11 +176,34 @@ function render(){
  stat("Passagerregistreringer",p.present.length?fmt(p.total):"—",m.withoutNoShow?"Uden no-shows":"Alle statusser, inklusive no-shows")+
  stat("Dækningsgrad",f.gpPct!=null?percent(f.gpPct):"—",f.gpPct!=null?"Dækningsbidrag: "+money(f.gp):"Kun enkelt afdeling")+
  stat("Afdelingsresultat",f.result!=null?money(f.result):"—",f.result!=null?"Faktisk · JetReports":"Vises kun for enkelt afdeling");
+ $("compareHeading").textContent=m.yearB?"Sammenligning "+m.year+" mod "+m.yearB:"Sammenligning mellem år";
  if(m.financeComparable){
- $("yoy").innerHTML=stat("Omsætning mod "+m.yearB,percent(diffPercent(f.income,m.fb.income)),"Samme måneder")+
- stat("Omsætning/pax mod "+m.yearB,percent(diffPercent(f.spend,m.fb.spend)),"Samme måneder")+
- stat("JetReports-pax mod "+m.yearB,percent(diffPercent(f.pax,m.fb.pax)),"Samme måneder");
- }else $("yoy").innerHTML='<p class="sub">Økonomisk årssammenligning vises først, når JetReports fra begge år dækker de samme valgte måneder.</p>';
+ $("compareNotice").textContent="Økonomiske regnskabstal er indlæst for samme måneder i begge år.";
+ $("yoy").innerHTML=stat("Omsætning · ændring",percent(diffPercent(f.income,m.fb.income)),"Samme måneder · "+m.year+" vs. "+m.yearB)+
+ stat("DKK/pax · ændring",percent(diffPercent(f.spend,m.fb.spend)),"JetReports-pax · samme måneder")+
+ stat("JetReports-pax · ændring",percent(diffPercent(f.pax,m.fb.pax)),"Samme skibspassagerer");
+ }else{
+ const hasA=f.monthly.length>0,hasB=!!m.fb&&m.fb.monthly.length>0;
+ $("compareNotice").textContent=!m.yearB?"Vælg et sammenligningsår.":hasA&&!hasB?
+ "Regnskab for "+m.yearB+" er ikke indlæst for "+(DEP[m.dept]||"de valgte afdelinger")+". Passagermix kan stadig sammenlignes nedenfor.":hasA&&hasB?
+ "Økonomisk sammenligning afventer JetReports for samme måneder i begge år.":"Økonomiske sammenligninger kræver JetReports fra begge år.";
+ $("yoy").innerHTML="";
+ }
+ if(m.yearB&&m.paxComparable){
+ const change=m.pa.total-m.pb.total,rel=diffPercent(m.pa.total,m.pb.total);
+ $("paxCompare").innerHTML='<h3 style="margin:0 0 12px">Passagerregistreringer · '+m.year+' mod '+m.yearB+'</h3>'+
+ '<div class="grid g3">'+
+ stat("Passagermix "+m.year,fmt(m.pa.total),"Indlæst passagerfil")+
+ stat("Passagermix "+m.yearB,fmt(m.pb.total),"Indlæst passagerfil")+
+ stat("Forskel i antal",(change>0?"+":"")+fmt(change),percent(rel)+" fra "+m.yearB+" til "+m.year)+
+ '</div><p class="sub small" style="margin:11px 0 0">Landefordelingen og ændringer i procentpoint finder du under Passagermix. Passagerregistreringer er ikke det samme som officielle JetReports-pax.</p>';
+ }else{
+ $("paxCompare").innerHTML=m.yearB?
+ '<p class="sub small">Passagerregistreringer for '+m.yearB+' kan endnu ikke sammenlignes for de valgte måneder. Kontrollér passagerfilen.</p>':"";
+ }
+ const bFinance=m.yearB&&[...jets.values()].some(j=>j.year===m.yearB&&(m.dept==="ALL"||j.dep===m.dept));
+ $("spendGraphInfo").textContent="Grafen viser indlæste regnskabsmåneder for hele året, uanset valgt enkeltmåned. DKK/pax = omsætning ÷ JetReports-pax. "+
+ (m.yearB&&!bFinance?"Guld mangler, fordi JetReports for "+m.yearB+" ikke er indlæst. Pax "+m.yearB+" kan ses i sammenligningen ovenfor.":"");
  drawSpend(m);
  $("spendMonthTable").innerHTML=table(["Måned","Omsætning A","Jet-pax A","DKK/pax A","Omsætning B","Jet-pax B","DKK/pax B"],m.months.map(mm=>{
  const a=officialMonth(m.year,mm,m.dept),b=m.yearB?officialMonth(m.yearB,mm,m.dept):null;
@@ -196,7 +219,7 @@ function render(){
  });
  tableCSV=[["Land","Registreringer "+m.year,"Andel "+m.year+" %","Registreringer "+(m.yearB||"B"),"Andel B %","Forskel","Mix pp"],
  ...countries.map(k=>{const a=p.countries.get(k)||0,b=m.pb?.countries.get(k)||0,aa=p.total?100*a/p.total:null,bb=m.pb?.total?100*b/m.pb.total:null;return [k,a,aa,m.pb&&m.pb.missing.length===0?b:"",m.pb?.total?bb:"",m.paxComparable?a-b:"",m.paxComparable&&aa!=null&&bb!=null?aa-bb:""]})];
- $("countriesTable").innerHTML=table(["Nationalitet",m.year+" pax",m.year+" andel",m.yearB||"B"+" pax",(m.yearB||"B")+" andel","Forskel pax","Ændring i andel"],rows);
+ $("countriesTable").innerHTML=table(["Nationalitet",m.year+" pax",m.year+" andel",(m.yearB||"B")+" pax",(m.yearB||"B")+" andel","Forskel pax","Ændring i andel"],rows);
  $("paxTotal").textContent=p.present.length?fmt(p.total)+" registreringer / "+p.countries.size+" nationaliteter":"Ingen passagerdata";
  const dRows=[];
  for(const dep of deptCodes()){
