@@ -7,6 +7,7 @@ const DEP={TFS:"Taxfree / Sjóbúðin",FNB:"F&B / Restaurant",REC:"Reception",AC
 const COUNTRY={DE:"Tyskland",FO:"Færøerne",DK:"Danmark",IS:"Island",NL:"Nederlandene",FR:"Frankrig",CH:"Schweiz",PL:"Polen",SE:"Sverige",NO:"Norge",GB:"Storbritannien",AT:"Østrig",IT:"Italien",ES:"Spanien",CZ:"Tjekkiet",BE:"Belgien",FI:"Finland",US:"USA"};
 const pax=new Map(),jets=new Map();
 let errors=[],tableCSV=[],reportText="";
+const savedSegments=[];let segmentCSV=[];
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=(v,n=0)=>v==null||!Number.isFinite(v)?"—":Number(v).toLocaleString("da-DK",{minimumFractionDigits:n,maximumFractionDigits:n});
 const money=v=>v==null?"—":fmt(v,0)+" DKK";
@@ -35,8 +36,11 @@ function parsePax(wb,file){
   if(check.getUTCFullYear()!==y||check.getUTCMonth()!==m-1||check.getUTCDate()!==day){rejected++;continue}
   if(!byYear.has(y))byYear.set(y,{year:y,months:new Map(),count:0,file});
   const yr=byYear.get(y);
-  if(!yr.months.has(m))yr.months.set(m,{all:new Map(),withoutNSH:new Map(),total:0,noShow:0,days:new Set()});
+  if(!yr.months.has(m))yr.months.set(m,{all:new Map(),withoutNSH:new Map(),segments:new Map(),total:0,noShow:0,days:new Set()});
   const obj=yr.months.get(m),ct=at(row,"COUNTRY_ID").toUpperCase()||"UK",status=at(row,"bookingRowStatusCode").toUpperCase();
+  const category=at(row,"Category").toUpperCase(),age=at(row,"AgeGroup"),guest=at(row,"GUEST_TYPE_ID").toUpperCase();
+  const segmentKey=JSON.stringify([ct,category,age,guest,status]);
+  obj.segments.set(segmentKey,(obj.segments.get(segmentKey)||0)+1);
   obj.all.set(ct,(obj.all.get(ct)||0)+1);obj.total++;yr.count++;obj.days.add(day);
   if(status==="NSH")obj.noShow++;else obj.withoutNSH.set(ct,(obj.withoutNSH.get(ct)||0)+1);
   rows++;
