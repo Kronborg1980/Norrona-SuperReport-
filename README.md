@@ -1,89 +1,41 @@
-# Norröna SuperReport
+# Norröna SuperReport — præcise nøgletal
 
-Selvstændig analyse af passagermix og kommercielle JetReports for MS Norröna.
+En enkel hjemmeside, der sammenholder passagerfordeling med verificerbare tal fra JetReports.
 
 ## Start
 
-Åbn `super-report/index.html` gennem en webserver / dit eksisterende JetReports-hosting. Vælg **Indlæs Excel**, eller træk filerne direkte ind på siden.
+Åbn https://kronborg1980.github.io/Norrona-SuperReport-/ og indlæs én eller flere Excel-filer med drag-and-drop. Du kan indlæse pax-år for 2024, 2025, 2026 osv. samt regnskab for TFS, FNB, REC, ACC og GAL. Vælg år, periode, afdeling og bookingstatus.
 
-Indlæs:
-- Passagerfiler: `Catrgory pr departure 2025.xlsx`, `... 2026.xlsx` og senere 2024/2027.
-- JetReports: de aktuelle `Mánaðartøl`-udtræk for **TFS, FNB, REC, ACC og GAL**, et sæt for hvert regnskabsår.
+Filer for samme passagerår erstatter tidligere udgaver af det år. En JetReport for samme år og afdeling erstatter den tidligere rapport. Ingen passager- eller regnskabstal ligger i kildekoden.
 
-Filer kan indlæses i vilkårlig rækkefølge. Et nyt udtræk for samme passagerår erstatter det forrige år. Et nyt JetReport-udtræk for samme år og afdeling erstatter den tidligere version. Filerne gemmes ikke som data i projektet.
+## Hvilke nøgletal er faktiske?
 
-## Analyse
+- Omsætning: Income total, Act.-kolonnen i JetReports.
+- Officielle passagerer: Pax:, Act.-kolonnen i JetReports. Skibets pax tælles aldrig flere gange på grund af flere afdelinger.
+- **Omsætning pr. pax:** Summen af omsætning divideret med summen af JetReports-pax i de samme måneder. Det er ikke gennemsnittet af månedernes Sales pr. Pax.
+- Dækningsbidrag: Gross-Profit for én afdeling.
+- Dækningsgrad: Samlet Gross-Profit divideret med samlet Income total × 100.
+- Resultat: Total, Act.-kolonnen for én afdeling.
+- Nationalitetsandel: Registreringer fra landet divideret med samtlige passagerregistreringer i samme periode og bookingstatusfilter.
+- År-mod-år på økonomi vises kun, når der er JetReports for samme valgte måneder i begge år.
+- Manglende måneder vises som en tankestreg, ikke som nul.
+- Bookingstatus: Alle registreringer inklusive NSH som standard, med mulighed for at udelukke NSH.
+- Ved valg af Alle indlæste afdelinger vises kun summen af de indlæste afdelingers omsætning. Ikke et fejlagtigt samlet skibsresultat.
+- **Ingen simulation eller nationalitetsspecifik omsætning:** De to filtyper kan ikke vise, hvilke nationaliteter der faktisk har købt varerne.
 
-- Nationaliteter, landekoder, no-shows, års- og månedssammenligninger
-- Omsætning, dækningsbidrag og resultat pr. afdeling
-- Omsætning pr. JetReports-passager
-- Månedlig samvariation mellem andelen af en valgt nationalitet og omsætning pr. passager; samvariation betyder **ikke** årsag
-- Samme-kalendermåned år-for-år hvor der findes tilstrækkeligt mange datapunkter
-- Volumen- vs. forbrugseffekt ved årssammenligning
-- Afstemning mellem passagerexport og JetReports-pax
-- Ledelsesrapport, CSV, print/PDF og PowerPoint med Smyril Line/JET-lignende grafisk tema
+## Kontrol mod Taxfree september 2026
 
-## Centrale beregningsprincipper
+| Periode | Omsætning | JetReports-pax | DKK/pax |
+| --- | ---: | ---: | ---: |
+| September 2026 | 2.337.598,36 DKK | 10.785 | 216,7453 |
+| Januar–september 2026 | 30.161.795,09 DKK | 98.671 | 305,6804 |
 
-1. **Alle afdelinger kræver alle fem afdelingsrapporter for hver måned.** Delvise skibstotaler vises ikke som fuldstændige.
-2. **Pax fra JetReports må ikke lægges sammen over afdelinger.** De fem rapporter viser skibets samme passagertal.
-3. **Kabyssens vareforbrug:** F&B's interne galley allocation tilbageføres ved samlet FNB+GAL-resultat/DB, fordi GAL allerede viser selve omkostningen.
-4. **Nationalitetsudgifter/omsætning:** De vedhæftede tal indeholder ingen entydig transaktionskobling mellem kunde og betaling. SuperReport beregner derfor ikke omsætning per tysk, dansk eller færøsk gæst. Det analyserer i stedet ændringer i mix og månedsomsætning pr. passager.
-5. **No-shows:** Udelukkes som standard fra passagerfilens registreringer. JetReports' egne pax bruges til nøgletallet omsætning pr. passager.
-6. **Samme perioder:** Årsændringer vises kun for samme dækkede måneder, og manglende regnskabsdata behandles ikke som nul.
+September-tallet stemmer med Sales pr. Pax-rækken i den originale JetReport.
 
-## Drift
+## Filer
 
-En enkelt statisk HTML-fil. Excel-filerne indlæses af SheetJS i browseren. PowerPoint genereres af PptxGenJS, der indlæses, når brugeren vælger eksport. Bibliotekerne hentes fra CDN, så internetforbindelse er nødvendig første gang.
+- index.html: brugerflade og JetReports-inspireret design.
+- app-v2.js: import, afstemning, rigtige nøgletal, tabeller og eksport.
+- Excel behandles i browseren med SheetJS; PowerPoint genereres med PptxGenJS.
 
-
-## Passagermix-dybde (version 2)
-
-- **All pax som standard:** Alle nationaliteter og alle bookingstatusser/registreringer vises ved start. Bookingstatus-filteret kan skiftes til uden no-show eller kun no-show.
-- **Mix-dybde:** Opdel antal og andel efter land, nationalitetsgruppe, rute, passagerkategori, alder, bookingstatus eller rækketype. Ekstra filtre for land, rute, kategori og alder.
-- **År-mod-år:** Se forskel i antal, procent og procentpoint for de samme måneder.
-- **Krydstabeller:** Nationalitet × rute og nationalitet × passagerkategori, plus stigninger, fald og månedlig andelsudvikling.
-- **Sammenhæng:** Landekoders andel over for omsætning pr. JetReports-passager i den valgte afdeling. Pearson r beregnes kun ved mindst seks sammenhørende måneder med tilstrækkelig variation. Samme kalendermåned år-mod-år vises særskilt.
-- **Dybere rapport og PowerPoint:** Nationalitetsforskydninger, ruter, kategorier, alder og no-shows. Ni slides i den eksisterende Smyril Line-inspirerede stil.
-- **Passagerfiler alene:** Fælles måneder og passagermix kan analyseres uden indlæste JetReports. Omsætning kræver de tilsvarende regnskaber.
-
-**Definition:** “All pax” betyder alle registreringer i passagereksporten, inklusive NSH. Det er ikke nødvendigvis identisk med JetReports' officielle rejsetal. SuperReport viser afvigelsen under Datakontrol og anvender JetReports-pax som nævner for omsætning pr. passager.
-
-
-## All pax og Sammenhæng
-
-Når både Nationalitet og Bookingstatus står på All pax, analyseres alle passagerregistreringer. Under **Sammenhæng** viser punktdiagrammets X-akse samlet antal registreringer pr. måned og Y-aksen afdelingens omsætning pr. JetReports-passager. Det er altså ikke længere automatisk Tyskland.
-
-Når der vælges en specifik nationalitet, skifter X-aksen til den pågældende nationalitets andel (%) af månedens samlede registreringer. Analyseboksen, ledelsesrapporten, CSV-eksporten og PowerPointens analyseslide følger valget. Tabellen med nationaliteternes individuelle sammenhænge findes fortsat nedenunder.
-
-Bemærk, at et større passagerantal i sig selv kan påvirke omsætning pr. passager, og at pax-registreringer og JetReports-pax ikke nødvendigvis har samme definition. Korrelation må ikke fortolkes som årsag.
-
-## Taxfree alene og paxmix-scenarie
-
-- Hvis kun én afdeling er importeret (fx TFS), vælges den automatisk. Omsætning, resultat og omsætning pr. pax vises for de indlæste regnskabsmåneder, selv om hele året ikke er afsluttet.
-- **Fælles måneder (YTD)** begrænses til måneder med finansdata i det valgte år, når disse findes. Fremtidige passagerbookinger bliver ikke regnet som allerede realiseret salg.
-- **Paxmix-simulator**: Faktisk omsætning og JetReports-pax i år A kombineres med paxmixet fra år B. Man behøver ikke JetReports for år B.
-- Brug 100 som forbrugsindeks for lige forbrug pr. nationalitet. 120 er et hypotetisk indeks på 20% højere forbrug end 100. Modellen justeres separat måned for måned, så eksempelvis juli-sæsonen ikke sammenblandes med andre måneder.
-- Vis **modelleret** DKK pr. pax og omsætning pr. nationalitet, følsomhed for tyskere/færinger/danskere, månedsoversigt og scenarieeffekt. CSV og PowerPoint omfatter beregningerne. Modellerede nationalitetsbeløb må ikke omtales som målte køb.
-- Ved indeks 100 for alle grupper bliver scenarieeffekten nul, og sum af estimeret omsætning på nationaliteter er lig totalen fra JetReports.
-
-## September og eksportens datoer
-
-De to særskilte filer er gennemgået: september 2025 indeholder 10.430 registreringer; september 2026 indeholder 10.852 registreringer. 2026-registreringerne dækker afgange dateret 1.–29. september og også afgange i oktober–december. Der ses ikke tegn på, at eksporten er afkortet ved 150.000-rækkersgrænsen (2026-filen har 112.482 registreringer). Den sidste afgangsdato 29. september betyder ikke i sig selv, at 30. september mangler – der sejles ikke nødvendigvis hver dag. Kontroller med afgangskalenderen, hvis fuld afgangsdækning skal garanteres. SuperReports Datakontrol viser datoer og omfang frem for automatisk at kalde måneden ufuldstændig.
-
-## Pax & Salg – detaljeret nationalitetsøkonomi
-
-Fanen **Pax & Salg** bruger de **faktiske månedsomsætninger og JetReports-passagertal** for den valgte afdeling og de valgte måneder. Du kan arbejde med **kun Taxfree** samt en eller flere års passagerfiler – der er ikke krav om alle fem JetReports.
-
-Tabelvisningen viser for hver nationalitet:
-- registreringer og procentandel af passagermixet samt referenceårets andel,
-- **modelleret omsætningsandel i %**, **modelleret DKK pr. pax** og **modelleret omsætning i DKK**,
-- relativt forbrugsindeks (redigeres direkte i tabellen) og forskellen mellem salgsandel og paxandel.
-
-**Beregning:** Hver måned beregnes landets passagerandel i passagereksporten. Indekset anvendes som en relativ vægt; vægtene normaliseres, så summen af modellens nationalitetsomsætning i måneden præcis er den **faktiske omsætning fra JetReports**. JetReports-pax fordeles efter nationalitetsandel til beregning af DKK pr. pax for landet. De enkelte beløb er ikke faktiske køb pr. nationalitet. Med indeks 100 for alle lande bliver model-DKK/pax ens og modellens salgsandel identisk med passagerandelen.
-
-**Hvad-nu-hvis:** Vælg eksempelvis DE eller FO og ændr deres andel med op til ±30 procentpoint. Andre nationaliteters andele tilpasses proportionalt, og det faktiske månedlige passagerantal fastholdes. Beregningen giver model-DKK/pax, simuleret totalomsætning og ændring i kroner. Der findes testknapper for en tydelig, **hypotetisk** kombination: indeks 120 og +10 procentpoint for DE eller FO. Der vises også ændringen i nationalitetsandel mellem år A og år B.
-
-**Hvorfor kan den beregnede effekt være lille?** Hvis nationalitetsmixet kun ændres 0,7 procentpoint fra et år til næste, kan ændringen i modelleret omsætning også være meget lille. Indeks 100 på alle grupper giver altid nul mixeffekt. Det betyder ikke, at nationaliteterne faktisk har ens købsadfærd, men at data ikke indeholder identificerbare køb pr. nationalitet. Faktiske købsforskelle kræver kassesystem-/POS-transaktioner, der kan forbindes på lovlig og pålidelig vis med nationalitet/booking.
-
-Ledelsesrapport, CSV og PowerPoint indeholder modeloversigten. Passagermix-fanen har også en kort økonomisk oversigt og genvej til den detaljerede analyse.
+Ældre simuleringer, estimater og rapportafsnit er fjernet fra den aktuelle hjemmeside.
