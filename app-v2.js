@@ -345,7 +345,20 @@ function makeReport(m,countries){
  "PASSAGERMIX",
  "Registreringer: "+fmt(p.present.length?p.total:null),
  "Bookingstatus: "+(m.withoutNoShow?"uden no-shows":"alle registreringer"),
- "Top nationaliteter: "+(top||"ingen"),
+ "Top nationaliteter (alle pax): "+(top||"ingen"),
+ "",
+ "VALGTE PASSAGERSEGMENTER",
+ ...(()=>{
+  const sel=readSegment(),active=segmentRow(sel,m),value=(x)=>x==null?"—":fmt(x,1)+"%";
+  const list=[...savedSegments];
+  if(!list.some(x=>JSON.stringify(x)===JSON.stringify(sel)))list.unshift(sel);
+  return list.map(x=>{
+   const z=segmentRow(x,m);
+   return segmentLabel(x)+": "+m.year+" "+fmt(z.a.total)+" ("+value(z.shareA)+" af alle pax)"+
+   (z.comp?", "+m.yearB+" "+fmt(z.b.total)+" ("+value(z.shareB)+" af alle pax), mix-skift "+fmt(z.pp,1)+" pp":"");
+  });
+ })(),
+ "Segmenter kan overlappe; summer dem ikke som unikke personer.",
  "",
  "KONTROL OG FORBEHOLD",
  "Omsætning/pax er altid beregnet ud fra JetReports-omsætning og JetReports-pax.",
