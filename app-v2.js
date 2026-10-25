@@ -284,18 +284,28 @@ function render(){
  const a=officialMonth(m.year,mm,m.dept),b=m.yearB?officialMonth(m.yearB,mm,m.dept):null;
  return [esc(MN[mm]),a?money(a.revenue):"—",a?.pax!=null?fmt(a.pax):"—",a?.spend!=null?fmt(a.spend,2):"—",
  b?money(b.revenue):"—",b?.pax!=null?fmt(b.pax):"—",b?.spend!=null?fmt(b.spend,2):"—"]}));
- drawBars(m);
- const countries=[...new Set([...p.countries.keys(),...(m.pb?.countries.keys()||[])])].sort((a,b)=>(p.countries.get(b)||0)-(p.countries.get(a)||0));
+ const selected=renderSegments(m),filteredA=selected.a,filteredB=selected.b;
+ drawBars({...m,pa:filteredA,pb:filteredB});
+ const countries=[...new Set([...filteredA.countries.keys(),...(filteredB?.countries.keys()||[])])]
+ .sort((x,y)=>(filteredA.countries.get(y)||0)-(filteredA.countries.get(x)||0));
+ const validB=!!filteredB&&m.months.length>0&&filteredB.missing.length===0;
+ const validA=m.months.length>0&&filteredA.missing.length===0;
+ const paxComparable=validA&&validB;
  const rows=countries.map(k=>{
-  const a=p.countries.get(k)||0,b=m.pb?.countries.get(k)||0,aa=p.total?100*a/p.total:null,bb=m.pb?.total?100*b/m.pb.total:null;
-  return [esc(colLabel(k)),fmt(a),percent(aa),m.pb&&m.pb.missing.length===0?fmt(b):"—",
-   m.pb&&m.pb.missing.length===0?percent(bb):"—",m.paxComparable?(a-b>=0?"+":"")+fmt(a-b):"—",
-   m.paxComparable&&aa!=null&&bb!=null?(aa-bb>=0?"+":"")+fmt(aa-bb,1)+" pp":"—"];
+ const a=filteredA.countries.get(k)||0,b=filteredB?.countries.get(k)||0;
+ const aa=filteredA.total?100*a/filteredA.total:null,bb=filteredB?.total?100*b/filteredB.total:null;
+ return [esc(colLabel(k)),validA?fmt(a):"—",validA?percent(aa):"—",validB?fmt(b):"—",
+ validB?percent(bb):"—",paxComparable?(a-b>=0?"+":"")+fmt(a-b):"—",
+ paxComparable&&aa!=null&&bb!=null?(aa-bb>=0?"+":"")+fmt(aa-bb,1)+" pp":"—"];
  });
- tableCSV=[["Land","Registreringer "+m.year,"Andel "+m.year+" %","Registreringer "+(m.yearB||"B"),"Andel B %","Forskel","Mix pp"],
- ...countries.map(k=>{const a=p.countries.get(k)||0,b=m.pb?.countries.get(k)||0,aa=p.total?100*a/p.total:null,bb=m.pb?.total?100*b/m.pb.total:null;return [k,a,aa,m.pb&&m.pb.missing.length===0?b:"",m.pb?.total?bb:"",m.paxComparable?a-b:"",m.paxComparable&&aa!=null&&bb!=null?aa-bb:""]})];
- $("countriesTable").innerHTML=table(["Nationalitet",m.year+" pax",m.year+" andel",(m.yearB||"B")+" pax",(m.yearB||"B")+" andel","Forskel pax","Ændring i andel"],rows);
- $("paxTotal").textContent=p.present.length?fmt(p.total)+" registreringer / "+p.countries.size+" nationaliteter":"Ingen passagerdata";
+ tableCSV=[["Land","Registreringer "+m.year,"Andel af udvalg "+m.year+" %","Registreringer "+(m.yearB||"B"),"Andel af udvalg B %","Forskel","Mix pp"],
+ ...countries.map(k=>{
+ const a=filteredA.countries.get(k)||0,b=filteredB?.countries.get(k)||0,
+ aa=filteredA.total?100*a/filteredA.total:null,bb=filteredB?.total?100*b/filteredB.total:null;
+ return [k,validA?a:"",validA?aa:"",validB?b:"",validB?bb:"",paxComparable?a-b:"",paxComparable&&aa!=null&&bb!=null?aa-bb:""];
+ })];
+ $("countriesTable").innerHTML=table(["Nationalitet",m.year+" pax",m.year+" andel i udvalg",(m.yearB||"B")+" pax",(m.yearB||"B")+" andel i udvalg","Forskel pax","Ændring i andel"],rows);
+ $("paxTotal").textContent=validA?fmt(filteredA.total)+" i udvalg · "+fmt(p.total)+" alle registreringer · "+filteredA.countries.size+" lande":"Ingen sammenlignelige passagerdata";
  const dRows=[];
  for(const dep of deptCodes()){
  const o=financeAggregate(m.year,m.months,dep);
@@ -351,6 +361,7 @@ function refresh(preserve){
  const depts=deptCodes();
  option("department",[["ALL","Alle indlæste afdelinger"],...depts.map(d=>[d,DEP[d]])],preserve?saved.department:depts.length===1?depts[0]:"ALL");
  option("period",[["YTD","År til dato (regnskab)"],...MN.slice(1).map((v,i)=>[i+1,v])],preserve?saved.period:"YTD");
+ refreshSegmentOptions();
  render();
 }
 function renderSources(){
@@ -405,12 +416,30 @@ function wire(){
  document.addEventListener("dragleave",e=>{if(e.relatedTarget==null)$("drop").classList.remove("hover")});
  document.addEventListener("drop",async e=>{if(e.dataTransfer?.files?.length){e.preventDefault();$("drop").classList.remove("hover");await importFiles(e.dataTransfer.files)}});
  $("sources").addEventListener("click",e=>{const key=e.target.closest("[data-del]")?.dataset.del;if(!key)return;const [type,y,d]=key.split("|");if(type==="P")pax.delete(Number(y));else jets.delete(y+"|"+d);refresh(true)});
+ for(const id of ["segmentCountry","segmentCategory","segmentAge","segmentGuest"])$(id).onchange=()=>render();
+ $("segmentReset").onclick=()=>{
+  for(const id of ["segmentCountry","segmentCategory","segmentAge","segmentGuest"])$(id).value="";
+  render();
+ };
+ $("segmentAdd").onclick=()=>{
+  const chosen=readSegment(),key=JSON.stringify(chosen);
+  if(savedSegments.some(x=>JSON.stringify(x)===key))return;
+  if(savedSegments.length>=20){$("feedback").textContent="Du kan gemme op til 20 grupper ad gangen.";return}
+  savedSegments.push({...chosen});render();
+ };
+ $("segmentSaved").addEventListener("click",e=>{
+  const button=e.target.closest("[data-segment-remove]");
+  if(!button)return;const i=Number(button.dataset.segmentRemove);
+  if(i>=0&&i<savedSegments.length)savedSegments.splice(i,1);
+  render();
+ });
+ $("segmentExport").onclick=()=>csv(segmentCSV,"norrona_passagersegmenter.csv");
  for(const id of ["yearA","yearB","department","period","status"])$(id).onchange=()=>render();
  document.querySelector("nav").onclick=e=>{const x=e.target.closest("[data-tab]");if(x)activate(x.dataset.tab)};
  $("exportCSV").onclick=()=>csv(tableCSV,"norrona_passagermix.csv");
  $("print").onclick=()=>{activate("report");window.print()};
  $("exportPPT").onclick=()=>{powerPoint().catch(e=>$("feedback").textContent="PowerPoint: "+e.message)};
- $("reset").onclick=()=>{pax.clear();jets.clear();refresh(false);$("feedback").textContent=""};
+ $("reset").onclick=()=>{pax.clear();jets.clear();savedSegments.length=0;for(const id of ["segmentCountry","segmentCategory","segmentAge","segmentGuest"])$(id).value="";refresh(false);$("feedback").textContent=""};
 }
 wire();refresh(false);
 window.NorronaDiagnostics={parsePax,parseJet,officialMonth,financeAggregate,countryAggregate,model,getPax:()=>pax,getJets:()=>jets};
