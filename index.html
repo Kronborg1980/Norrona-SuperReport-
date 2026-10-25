@@ -19,7 +19,7 @@ main{max-width:1450px;margin:auto;padding:25px 24px 75px}h1{font-size:26px;margi
 .legend{display:flex;justify-content:flex-end;align-items:center;gap:15px;font-size:12px;margin:-22px 0 16px}.legend span{display:inline-flex;gap:6px;align-items:center}.swatch{width:12px;height:12px;border-radius:3px;display:inline-block}
 .country-row{display:grid;grid-template-columns:130px 1fr 76px;align-items:center;gap:8px;margin:10px 0;font-size:12px}.track{height:10px;background:#284552;border-radius:6px;overflow:hidden;margin:3px 0}.track i{display:block;height:100%;border-radius:6px}.twobar{min-width:0}.right{text-align:right}.gold{color:var(--b)}.empty{padding:25px;text-align:center;color:var(--muted)}
 .month-graph{display:grid;grid-template-columns:repeat(12,minmax(33px,1fr));gap:8px;overflow-x:auto;padding:10px 0}.month-chart{display:grid;text-align:center;gap:5px;min-width:31px;font-size:11px;color:var(--muted)}.columns{height:185px;display:flex;gap:3px;align-items:end;justify-content:center;border-bottom:1px solid #456170}.columns span{display:block;flex:1;max-width:16px;border-radius:4px 4px 0 0}.bar-a{background:var(--a)}.bar-b{background:var(--b)}.section-gap{margin-top:14px}.foot{font-size:11px;color:#7496a9;margin-top:24px}.report{white-space:pre-wrap;font:13px/1.9 system-ui,-apple-system,"Segoe UI",sans-serif;color:#dbeef7}.pill{font-size:11px;padding:5px 9px;border:1px solid var(--border);border-radius:18px;color:#bdd4e1}
-@media(max-width:990px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.filters{grid-template-columns:repeat(3,1fr)}.g2,.g3{grid-template-columns:1fr}}
+.segment-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:17px}.segment-filters label{font-size:10px;letter-spacing:.045em;color:var(--muted);font-weight:700;min-width:0}.segment-filters select{display:block;width:100%;margin-top:6px;border:1px solid #355265;border-radius:9px;padding:10px 12px;background:#143041;color:#fff;font-size:13px;min-width:0}.segment-panel .kpi{min-height:92px}.segment-panel .kpi .big{font-size:22px;margin:7px 0 3px}.segment-chip{display:inline-block;border:1px solid #33596e;background:#153547;border-radius:999px;padding:4px 9px;margin:0 5px 5px 0;font-size:11px}.segment-remove{border:0;background:transparent;font-size:16px;line-height:1;padding:0 3px;color:#e5ba78}.segment-label{display:inline-flex;align-items:center;gap:8px}@media(max-width:990px){.segment-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){.segment-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:990px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.filters{grid-template-columns:repeat(3,1fr)}.g2,.g3{grid-template-columns:1fr}}
 @media(max-width:620px){.shell{padding:0 12px}main{padding:17px 12px 60px}.top{gap:8px}.brand{font-size:16px}.brand small{font-size:8px}.drag{gap:9px;padding:12px}.drag button{display:none}.filters{grid-template-columns:repeat(2,1fr)}.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi .big{font-size:21px}.card,.panel{padding:14px}.country-row{grid-template-columns:100px 1fr 60px}}
 @media print{header,.drag,.filters,.source-list,.feedback,.notice,.print-hide,.foot{display:none!important}.tab{display:none!important}#tab-report{display:block!important}.panel{border:none;background:white;color:#0f2737}body{background:white;color:#0f2737}.report{color:#0f2737}main{padding:0}}
 </style>
@@ -46,6 +46,21 @@ main{max-width:1450px;margin:auto;padding:25px 24px 75px}h1{font-size:26px;margi
 </section>
 <section class="tab" id="tab-passengers">
 <div class="row"><h2>Nationaliteter · antal og andel</h2><span class="sub small" id="paxTotal"></span></div>
+<div class="panel segment-panel" style="margin:0 0 14px">
+ <div class="row"><div><h2 style="margin-bottom:2px">Filtrér passagergrupper</h2><p class="sub small" style="margin:0">Kombinér f.eks. Tyskland + Adult + 31–45 år. Filtrene ændrer kun passagertal, ikke JetReports-salget.</p></div><div class="row"><button id="segmentReset">Vis alle</button><button id="segmentAdd" class="primary">+ Gem til sammenligning</button></div></div>
+ <div class="segment-filters">
+ <label>Nationalitet<select id="segmentCountry"><option value="">Alle lande</option></select></label>
+ <label>Passagertype (Category)<select id="segmentCategory"><option value="">Alle passagertyper</option></select></label>
+ <label>Aldersgruppe (AgeGroup)<select id="segmentAge"><option value="">Alle aldersgrupper</option></select></label>
+ <label>Gæstetype (GUEST_TYPE_ID)<select id="segmentGuest"><option value="">Alle gæstetyper</option></select></label>
+ </div>
+ <div id="segmentActive" class="sub small" style="margin:9px 0 11px"></div>
+ <div class="grid g3" id="segmentKPIs"></div>
+</div>
+<div class="panel" style="margin-bottom:14px">
+ <div class="row"><div><h2 style="margin-bottom:2px">Sammenlign dine passagersegmenter</h2><p class="sub small" style="margin:0">Gem flere kombinationer, f.eks. tyske voksne og færøske voksne 31–45 år.</p></div><button id="segmentExport">Eksportér CSV</button></div>
+ <div id="segmentSaved" style="margin-top:12px"></div>
+</div>
 <div class="grid g2">
  <div class="panel"><h2>Største nationaliteter</h2><div class="legend" id="countryLegend"></div><div id="countryBars"></div></div>
  <div class="panel"><h2>Samlet passagermix · A vs. B</h2><div class="row" style="margin-bottom:12px"><span class="sub small">Andel = registreringer fra landet / alle registreringer i samme periode.</span><button id="exportCSV">CSV</button></div><div id="countriesTable"></div></div>
