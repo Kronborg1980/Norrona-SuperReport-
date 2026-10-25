@@ -104,6 +104,77 @@ function periodMonths(y,dept,selection){
  else end=Math.max(...(pax.get(y)?.months.keys()||[]),0);
  return Array.from({length:end},(_,i)=>i+1);
 }
+
+const CATEGORY_NAMES={ADL:"Adult · Voksen",CHD:"Child · Barn",INF:"Infant · Spædbarn"};
+function categoryLabel(code){return CATEGORY_NAMES[code]||code||"Ikke angivet"}
+function readSegment(){
+ return {country:$("segmentCountry").value||"",category:$("segmentCategory").value||"",age:$("segmentAge").value||"",guest:$("segmentGuest").value||""};
+}
+function segmentLabel(sel){
+ const tags=[sel.country?colLabel(sel.country):"Alle nationaliteter",sel.category?categoryLabel(sel.category):"Alle passagertyper",sel.age?"Alder "+sel.age:"Alle aldersgrupper",sel.guest?"Gæstetype "+sel.guest:"Alle gæstetyper"];
+ return tags.filter((v,i)=>i===0||!v.startsWith("Alle ")).join(" · ");
+}
+function refreshSegmentOptions(){
+ const countries=new Set(),categories=new Set(),ages=new Set(),guests=new Set();
+ for(const record of pax.values())for(const mo of record.months.values())for(const key of (mo.segments||new Map()).keys()){
+  const [c,t,a,g]=JSON.parse(key);
+  if(c)countries.add(c);if(t)categories.add(t);if(a)ages.add(a);if(g)guests.add(g);
+ }
+ const makeOptions=(id,options,label)=>option(id,[["",label],...options],$(id).value);
+ makeOptions("segmentCountry",[...countries].sort().map(c=>[c,colLabel(c)]),"Alle nationaliteter");
+ makeOptions("segmentCategory",[...categories].sort().map(c=>[c,categoryLabel(c)]),"Alle passagertyper");
+ makeOptions("segmentAge",[...ages].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(x=>[x,x]),"Alle aldersgrupper");
+ makeOptions("segmentGuest",[...guests].sort().map(g=>[g,categoryLabel(g)]),"Alle gæstetyper");
+}
+function segmentAggregate(year,months,sel,withoutNSH){
+ const countries=new Map(),missing=[],present=[];let total=0;
+ const record=pax.get(Number(year));
+ for(const m of months){
+  const mo=record?.months.get(m);
+  if(!mo){missing.push(m);continue}
+  present.push(m);
+  for(const [key,n] of (mo.segments||new Map())){
+   const [country,category,age,guest,status]=JSON.parse(key);
+   if(withoutNSH&&status==="NSH")continue;
+   if(sel.country&&sel.country!==country||sel.category&&sel.category!==category||sel.age&&sel.age!==age||sel.guest&&sel.guest!==guest)continue;
+   total+=n;countries.set(country,(countries.get(country)||0)+n);
+  }
+ }
+ return {countries,total,missing,present};
+}
+function segmentRow(sel,m){
+ const a=segmentAggregate(m.year,m.months,sel,m.withoutNoShow);
+ const b=m.yearB?segmentAggregate(m.yearB,m.months,sel,m.withoutNoShow):null;
+ const shareA=m.pa.total&&m.pa.missing.length===0&&a.missing.length===0?100*a.total/m.pa.total:null;
+ const shareB=m.pb?.total&&m.pb.missing.length===0&&b?.missing.length===0?100*b.total/m.pb.total:null;
+ const comp=!!b&&!a.missing.length&&!b.missing.length&&m.months.length>0;
+ return {sel,a,b,shareA,shareB,comp,delta:comp?a.total-b.total:null,pp:comp&&shareA!=null&&shareB!=null?shareA-shareB:null};
+}
+function renderSegments(m){
+ const choice=readSegment(),selected=segmentRow(choice,m);
+ const cmp=m.yearB&&selected.b;
+ const formatted=v=>v==null?"—":(v>0?"+":"")+fmt(v,1)+" pp";
+ const bValue=cmp&&selected.b.missing.length===0?fmt(selected.b.total):"—";
+ $("segmentActive").innerHTML="<strong>Aktivt udvalg: </strong>"+esc(segmentLabel(choice))+" · "+(m.withoutNoShow?"uden no-shows":"alle registreringer")+
+ '<div class="sub small">Andel beregnes i forhold til alle passagerregistreringer for samme år, måneder og bookingstatus.</div>';
+ $("segmentKPIs").innerHTML=
+ stat("Udvalgte "+m.year,selected.a.missing.length?"—":fmt(selected.a.total),"Andel af alle pax: "+percent(selected.shareA))+
+ stat("Udvalgte "+(m.yearB||"år B"),bValue,"Andel af alle pax: "+percent(selected.shareB))+
+ stat("Forskel "+m.year+" − "+(m.yearB||"år B"),selected.comp?(selected.delta>0?"+":"")+fmt(selected.delta):"—","Mixandel: "+formatted(selected.pp));
+ const items=savedSegments.map((sel,i)=>({...segmentRow(sel,m),index:i,label:segmentLabel(sel)}));
+ segmentCSV=[["Segment","År A","Antal A","Andel A %","År B","Antal B","Andel B %","Forskel antal","Forskel procentpoint"],...items.map(x=>[x.label,m.year,x.a.total,x.shareA,m.yearB||"",x.comp?x.b.total:"",x.shareB,x.delta,x.pp])];
+ $("segmentSaved").innerHTML=items.length?
+ table(["Gemte grupper",m.year+" pax",m.year+" af alle pax",(m.yearB||"B")+" pax",(m.yearB||"B")+" af alle pax","Forskel","Mix-skift",""],items.map(x=>[
+ '<span class="segment-label">'+esc(x.label)+'</span>',
+ x.a.missing.length?"—":fmt(x.a.total),percent(x.shareA),
+ x.comp?fmt(x.b.total):"—",percent(x.shareB),
+ x.comp?(x.delta>0?"+":"")+fmt(x.delta):"—",
+ formatted(x.pp),
+ '<button class="segment-remove" data-segment-remove="'+x.index+'" aria-label="Fjern gruppe" title="Fjern gruppe">×</button>'
+ ]))+'<div class="sub small" style="margin-top:9px">Grupperne kan overlappe. Summer derfor ikke rækkerne som unikke passagerer.</div>':
+ '<p class="sub small">Ingen grupper gemt endnu. Vælg fx Tyskland + Adult + alder 31–45 og tryk “Gem til sammenligning”.</p>';
+ return selected;
+}
 function countryAggregate(year,months,withoutNoShow){
  let missing=[],countries=new Map(),nsh=0,all=0;const present=[];
  for(const m of months){
