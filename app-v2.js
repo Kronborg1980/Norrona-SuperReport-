@@ -84,6 +84,7 @@ function officialMonth(y,m,dept){
  return {revenue,budget:sum(rows.map(r=>r.budget)),pax:consistent?paxValues[0]:null,
  spend:consistent?revenue/paxValues[0]:null,
  gp:dept==="ALL"?null:rows[0].gp,result:dept==="ALL"?null:rows[0].result,
+ spendReported:dept==="ALL"?null:rows[0].spendReported,spendDifference:dept==="ALL"||!consistent||rows[0].spendReported==null?null:revenue/paxValues[0]-rows[0].spendReported,
  sourceCount:rows.length,sourceNames:src.map(j=>j.dep),paxMismatch:!consistent};
 }
 function countryMonth(y,m,withoutNoShow){
@@ -206,11 +207,12 @@ function render(){
  $("departmentTable").innerHTML=table(["Afdeling","Omsætning","JetReports-pax","DKK pr. pax","DB%","Resultat","Måneder"],dRows);
  const allJetRows=m.months.map(mm=>{const a=officialMonth(m.year,mm,m.dept),pa=countryMonth(m.year,mm,m.withoutNoShow);
  return [esc(MN[mm]),a?money(a.revenue):"—",a?.pax!=null?fmt(a.pax):"—",a?.spend!=null?fmt(a.spend,2):"—",
+ a?.spendReported!=null?fmt(a.spendReported,2):"—",a?.spendDifference!=null?fmt(a.spendDifference,3):"—",
  pa?fmt(pa.count):"—",a?.pax!=null&&pa?((pa.count-a.pax>=0?"+":"")+fmt(pa.count-a.pax)):"—"]});
- $("dataTable").innerHTML=table(["Måned","Jet omsætning","Jet pax","Jet DKK/pax","Paxfil registreringer","Afvigelse i antal"],allJetRows);
+ $("dataTable").innerHTML=table(["Måned","Omsætning","Jet pax","Beregnet DKK/pax","Jet-felt Sales pr. Pax","Afvigelse DKK","Paxfil registreringer","Afvigelse pax"],allJetRows);
  const sep=pax.get(m.year)?.months.get(9);
  $("dataNotes").innerHTML=
- '<p><strong>Omsætning pr. pax</strong> = summen af omsætning / summen af JetReports-pax for præcis de samme måneder. Aldrig gennemsnit af månedlige DKK/pax.</p>'+
+ '<p><strong>Omsætning pr. pax</strong> = summen af omsætning / summen af JetReports-pax for præcis de samme måneder. Aldrig gennemsnit af månedlige DKK/pax. Den beregnede månedsværdi kontrolleres mod JetReports-feltet Sales pr. Pax.</p>'+
  '<p><strong>Nationaliteter</strong> er passagerregistreringer fra paxfilen, ikke køb. Ingen omsætning fordeles på nationaliteter.</p>'+
  '<p><strong>Afdelingsvalg “Alle”</strong> summerer kun indlæste afdelingers omsætning; JetReports-pax lægges aldrig sammen. DB og resultat for hele skibet vises ikke som konsoliderede tal.</p>'+
  (sep?'<p><strong>September '+m.year+':</strong> '+fmt(sep.total)+' registreringer, '+fmt(sep.days.size)+' forskellige afgangsdage. Sidste afgangsdato er ikke i sig selv tegn på en ufuldstændig måned.</p>':"")+
