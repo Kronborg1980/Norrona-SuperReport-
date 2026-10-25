@@ -39,3 +39,18 @@ September-tallet stemmer med Sales pr. Pax-rækken i den originale JetReport.
 - Excel behandles i browseren med SheetJS; PowerPoint genereres med PptxGenJS.
 
 Ældre simuleringer, estimater og rapportafsnit er fjernet fra den aktuelle hjemmeside.
+
+## Filtre for passagergrupper
+
+I fanen **Passagermix** kan du kombinere disse Excel-felter:
+
+- **Nationalitet** — `COUNTRY_ID`, fx DE · Tyskland.
+- **Passagertype** — `Category`, fx ADL · Adult (voksen) eller CHD (barn).
+- **Aldersgruppe** — `AgeGroup`, præcis som angivet i Excel-udtrækket (fx 31-45).
+- **Gæstetype** — `GUEST_TYPE_ID`, hvis feltet findes i udtrækket.
+
+Alle filtre kan bruges samtidig, fx **DE + ADL + 31-45**. Tryk **Gem til sammenligning** for at gemme flere forskellige kombinationer og sammenligne både antal og procentandel af hele passagergrundlaget i år A og B. Segmenterne kan eksporteres som CSV og indgår i ledelsesrapporten.
+
+Procentandele i segmentkort og den gemte sammenligning er udregnet ift. **alle registreringer for det respektive år og den valgte måned/bookingstatus**, ikke kun de valgte grupper. Nationalitetstabellen viser derimod nationaliteters andel **inden for det filtrerede udvalg**. Overtælling undgås ved, at hver registrering tælles præcis én gang i hvert filterudvalg; gemte grupper kan dog overlappe og må ikke summeres.
+
+Indlæs Excel-filerne igen efter en ny browseropdatering. Passagerfilerne lagres ikke på webserveren. Filtrene ændrer **ikke** regnskabsomsætning, officielle JetReports-pax eller DKK pr. pax; der beregnes ikke køb pr. land, voksen eller aldersgruppe.
